@@ -1,0 +1,130 @@
+.page{
+  width: 100%;
+  min-height: 100vh;
+  background-color: #E4F5FF;
+}
+
+.frame{
+  margin-left: 150px;
+}
+
+.box {
+  width: 176px;
+  height: 523px;
+
+  display: flex;
+  flex-direction: column;
+  /* ⬇️ 공간 배치는 위에서부터, 요소 사이 간격은 gap으로 */
+  justify-content: flex-start;
+  align-items: center;
+  gap: 12px;
+
+  padding: 30px 20px 10px 20px;
+  border-radius: 25px;
+  background: #FFF; 
+  box-shadow: -1px -1px 4px 0 rgba(5, 1, 74, 0.05), 1px 1px 4px 0 rgba(5, 1, 74, 0.05);
+  margin-top: 52.5px;
+  margin-left: 170px;
+}
+
+.name {
+  width: 140px;
+  height: 31px;
+  color: #000;
+  font-size: 22px;
+  font-weight: bold;
+  line-height: 140%;
+}
+
+.student_id {
+  width: 140px;
+  height: 20px;
+  color: #555;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 140%;
+  margin-top: 4px; /* 살짝만 띄우기 */
+}
+
+.major {
+  width: 140px;
+  height: 20px;
+  color: #555;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 140%;
+}
+
+/* 메뉴 리스트 전체 */
+.menu {
+  /* ⬇️ 음수 마진 제거, 위쪽 여백만 적당히 */
+  margin-top: 8px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 공통 메뉴 아이템 스타일 */
+.menuItem,
+.menuItem2 {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: #52565F;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  /* 줄 간격 & 높이 (타이트 버전) */
+  padding: 6px 0;
+  min-height: 28px;
+}
+
+/* border 있는 메뉴 */
+.menuItem2 {
+  border-top: 1px solid var(--Bright-Gray, #EEEEF0);
+  border-bottom: 1px solid var(--Bright-Gray, #EEEEF0);
+}
+
+.menuItem:hover,
+.menuItem2:hover {
+  background-color: #f5f5f5;
+}
+
+/* 하단 문의/로그아웃 박스: 아래 붙이기 */
+.sbox {
+  margin-top: auto;
+  width: 100%;
+  /* ⬇️ 좌우 정렬 자연스럽게 */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.Quest,
+.Logout {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  color: #989A9F;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.quest,
+.logout {
+  font-size: 10px;
+}
+
+/* (사용 안 함) .line은 필요 없으므로 유지해도 되고 삭제해도 됩니다.
+.line {
+  width: 100%;
+  height: 1px;
+  background-color: #EEEEF0;
+}
+*/

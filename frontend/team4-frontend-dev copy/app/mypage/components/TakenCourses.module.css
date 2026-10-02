@@ -1,0 +1,132 @@
+/* ===== 박스 컨테이너 (카드와 톤 맞춤) ===== */
+.box {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  align-self: stretch;
+
+  width: 460px;                 /* 카드와 동일 */
+  height: 350px;                /* 카드와 동일 */
+
+  padding: 15px 30px;
+  gap: 12px;
+
+  background: #fff;
+  border: 1.125px solid #0381fe;  /* 카드와 동일 */
+  border-radius: 18.75px;         /* 카드와 동일 */
+
+  margin-top: -21.9rem;
+  margin-left: 56rem;
+
+  box-sizing: border-box;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+               Roboto, "Helvetica Neue", Arial, "Noto Sans KR", sans-serif;
+  color: #0f172a;
+}
+
+/* ===== 박스 타이틀 ===== */
+.title {
+  margin: 0;
+  font-size: 0.9375rem;   /* 카드 제목과 동일 */
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* ===== 상단 바 & 드롭다운 영역 ===== */
+.barbox {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bar {
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+/* ===== 커스텀 드롭다운 ===== */
+.selectWrap {
+  position: relative;
+  display: inline-block;
+}
+
+.selBtn {
+  width: 100px;
+  height: 32px;
+  padding: 0 26px 0 12px;
+  border-radius: 45px;
+  border: 0.75px solid #d0d0d2;
+  background: #fff;
+  font-size: 0.75rem;
+  cursor: pointer;
+  outline: none;
+  box-shadow:
+    1px 1px 2px 0 rgba(5, 1, 74, 0.25),
+    1px 1px 2px 0 rgba(255, 255, 255, 0.5) inset,
+    -1px -1px 2px 0 rgba(0, 0, 0, 0.25) inset;
+}
+
+.selBtn::after {
+  content: "";
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 10px;
+  background: url("/Vector 6.svg") no-repeat center / contain;
+  pointer-events: none;
+}
+
+/* 드롭다운 메뉴 */
+.selMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: #fff;
+  border: 1px solid #eeeef0;
+  border-radius: 8px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+  padding: 4px;
+  z-index: 999;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.menuItem {
+  font-size: 0.75rem;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.menuItem:hover { background: #f5f6f8; }
+.active { background: #eef2ff; font-weight: 600; }
+
+/* ===== 표 영역 ===== */
+.statusbox { width: 100%; }
+
+.headerRow {
+  display: grid;
+  grid-template-columns: 60px 80px 1fr 40px 48px;
+  gap: 8px;
+  padding: 6px 12px;
+  border-top: 1px solid #eeeef0;
+  border-bottom: 1px solid #eeeef0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 60px 80px 1fr 40px 48px;
+  gap: 8px;
+  padding: 7px 12px;
+  border-bottom: 1px dashed #eef2f7;
+  font-size: 0.75rem;
+}
+.row:last-child { border-bottom: none; }
+.row:hover { background: #f8fafc; border-radius: 6px; }
+
+.cellCenter { text-align: center; }
+.cellWide { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

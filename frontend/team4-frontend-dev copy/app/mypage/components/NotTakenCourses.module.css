@@ -1,0 +1,182 @@
+/* ===== 카드 컨테이너 (75%) ===== */
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;        /* 헤더/리스트가 가득 차도록 */
+  align-self: stretch;
+
+  width: 460px;              /* 650 × 0.75 */
+  height: 350px;            /* 399 × 0.75 */
+
+  padding: 15px 30px;          /* 20 40 × 0.75 */
+  gap: 11.25px;                /* 15 × 0.75 */
+
+  background: #fff;
+  border: 1.125px solid #0381fe;
+  border-radius: 18.75px;
+  margin-top: 3rem;
+  margin-left: 26rem;
+
+  box-sizing: border-box;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+               Roboto, "Helvetica Neue", Arial, "Noto Sans KR", sans-serif;
+  color: #0f172a;
+}
+
+/* ===== 헤더 ===== */
+.header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+}
+
+.titles { display: flex; flex-direction: column; gap: 3px; }
+.title { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 0.9375rem; font-weight: 700; }
+.subtitle { margin: 0; font-size: 0.675rem; color: #64748b; }
+.icon{ width: 16px; height: 16px;}
+
+/* (필요 없다 했던 퀵필터는 유지/삭제 자유)
+.quickFilters { display:flex; gap:6px; }
+.chip { padding: 4.5px 7.5px; border: .75px solid #cbd5e1; border-radius: 999px; background:#f8fafc; font-size:.6375rem; }
+*/
+
+/* ===== 리스트/표 영역 ===== */
+.listArea {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;                      /* 표는 간격 없이 붙이고 */
+  min-height: 0;               /* 내부 스크롤 확보 */
+  background: #fff;
+  border: 0.75px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 0;                  /* 내부 패딩 제거 (표 정밀 정렬) */
+  overflow: hidden;            /* 둥근 모서리 내 스크롤 숨김 */
+}
+
+/* 상단 얇은 선 + 컬럼 라벨 행 */
+.tableHeaderWrap {
+  padding: 9px 12px 6px;       /* 위 여백 조금, 사진 느낌 */
+  border-top: 1px solid #d1d5db; 
+}
+
+.tableHeader {
+  display: grid;
+  grid-template-columns: 70px 60px 1fr 56px; /* 학수번호 / 학기 / 과목명 / 학점 */
+  align-items: center;
+  gap: 12px;
+  color: #6b7280;              /* slate-500 */
+  font-weight: 600;
+  font-size: 0.7rem;           /* 작고 또렷하게 */
+  letter-spacing: 0.01em;
+  user-select: none;
+}
+
+/* 실제 데이터 영역(스크롤) */
+.rows {
+  max-height: calc(299.25px - 90px); /* 카드 높이 - (헤더/여백 대략치) */
+  overflow: auto;
+  padding: 0 12px 8px;
+  box-sizing: border-box;
+}
+
+/* 각 학기 그룹 */
+.semesterGroup { padding-top: 6px; }
+.semesterTitle {
+  font-size: 0.7rem;
+  color: #94a3b8;              /* slate-400 */
+  margin: 6px 0 2px;
+}
+
+/* 데이터 행 */
+.row {
+  display: grid;
+  grid-template-columns: 80px 60px 1fr 56px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;              /* 라벨보다 살짝 큰 높이 */
+  border-bottom: 1px dashed #eef2f7;
+}
+.row:last-child { border-bottom: none; }
+
+.row:hover {
+  background: #f8fafc;
+  border-radius: 6px;
+}
+
+/* 셀 정렬 */
+.code { font-variant-numeric: tabular-nums; }
+.sem  { }
+.name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.credit { text-align: right; } /* 마지막 컬럼 우측 정렬 */
+
+/* 상태 메시지 */
+.center, .centerError, .emptyState {
+  display: grid; place-items: center;
+  padding: 14px 0;
+  color: #6b7280;
+  font-size: 0.75rem;
+}
+
+.reset {
+  margin-top: 6px;
+  padding: 6px 10px;
+  border: 0.75px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.7rem;
+}
+.filterChips{
+  display: flex;
+  
+  padding: 4px;
+  border-radius: 100px;
+  background: var(--Bright-Gray, #EEEEF0);
+  box-shadow: 
+    1px 1px 2px 0 var(--Hongik-Medium-Gray, #989A9F) inset, 
+    -1px -1px 2px 0 rgba(255, 255, 255, 0.50) inset;
+}
+.chip{
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.6rem;
+  border: none; outline: none;
+  
+  
+  cursor: pointer;
+}
+.chipActive{
+  display: flex;
+  padding: 5px 8px;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+
+  border-radius: 100px;
+  background: var(--white, #FFF);
+  box-shadow: 
+  1px 1px 2px 0 rgba(255, 255, 255, 0.50) inset, 
+  -1px -1px 2px 0 rgba(0, 0, 0, 0.25) inset, 
+  1px 1px 2px 0 rgba(5, 1, 74, 0.50);
+}
+
+/* 스크롤바(선택) */
+.rows::-webkit-scrollbar { height: 8px; width: 8px; }
+.rows::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+
+/* ===== 본문(좌측 탭 있는 경우) ===== */
+.body { width: 100%; display: grid; grid-template-columns: 1fr; gap: 0; } /* 현재는 단일 영역만 쓸 거라 1컬럼 */
+.sidebar, .tab, .active { /* 필요 시 유지 */  
+  
+}
+/* 반응형 */
+@media (max-width: 860px) {
+  .card { width: 100%; height: auto; margin-left: 0; }
+  .rows { max-height: none; }
+  .tableHeader, .row {
+    grid-template-columns: 110px 60px 1fr 46px;
+    gap: 8px;
+  }
+}

@@ -1,0 +1,62 @@
+.dim {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(1.5px);
+  animation: fade .15s ease both;
+  z-index: 50;
+}
+@keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+
+.modal {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(760px, 92vw);
+  background: #fff; color: #111;
+  border-radius: 12px; padding: 28px 24px 24px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+  z-index: 51;
+}
+.close {
+  position: absolute; top: 10px; right: 12px;
+  border: none; background: transparent; font-size: 28px; color: #666; cursor: pointer;
+}
+
+.title { font-size: 28px; font-weight: 800; text-align: left; margin: 6px 0 8px; }
+.sub { color: #374151; margin: 0 0 8px; }
+.note { color: #6b7280; margin: 0 0 18px; font-size: 14px; }
+.info { margin-right: 6px; color: #0369a1; font-weight: 700; }
+
+.dropzone {
+  height: 360px; border-radius: 16px;
+  background: #eaf3ff;
+  border: 2px dashed #cfe0ff;
+  display: grid; place-items: center;
+  transition: border-color .15s ease, background .15s ease;
+  cursor: pointer;
+}
+.dropzoneActive { border-color: #7db7ff; background: #e6f0ff; }
+.placeholder { width: 120px; opacity: .6; }
+
+.helperText {
+  text-align: center; color: #4b5563; margin: 16px 0 12px;
+}
+
+.actions {
+  display: flex; gap: 12px; justify-content: center; margin-top: 6px;
+}
+
+.pick {
+  height: 44px; padding: 0 16px;
+  background: #0b61ff; color: #fff; border: none; border-radius: 10px;
+  font-weight: 700; cursor: pointer;
+}
+.plus { font-size: 18px; margin-right: 6px; }
+
+.primary {
+  height: 44px; padding: 0 16px;
+  background: #111827; color: #fff; border: none; border-radius: 10px;
+  font-weight: 700; cursor: pointer;
+}
+.primaryDisabled { background: #bfc4cc; cursor: not-allowed; }
+
+.fileName { margin-top: 10px; text-align: center; color: #374151; font-size: 14px; }

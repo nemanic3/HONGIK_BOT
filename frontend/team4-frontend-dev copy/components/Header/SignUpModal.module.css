@@ -1,0 +1,142 @@
+/* 오버레이/팝업 공통 */
+.dim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(1.5px);
+  animation: dimIn 150ms ease both;
+  z-index: 10;
+}
+@keyframes dimIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(720px, 92vw);
+  background: #fff;
+  color: #111;
+  transform: translate(-50%, -50%) scale(0.98);
+  padding: 32px 28px 28px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+  z-index: 11;
+  animation: popIn 160ms ease-out both;
+}
+@keyframes popIn {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  font-size: 28px;
+  line-height: 1;
+  color: #666;
+  cursor: pointer;
+}
+
+/* 타이틀 */
+.title { font-size: 28px; font-weight: 800; margin: 8px 0 6px; text-align: center; }
+.sub   { text-align: center; color: #6b7280; margin-bottom: 22px; }
+
+/* 폼 레이아웃 */
+.form { display: grid; gap: 14px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.label { display: grid; gap: 8px; font-size: 14px; color: #374151; text-align: left; }
+
+.input{
+  width:100%;
+  height:44px;                 /* 또는 height 지우기 */
+  padding:10px 12px;
+  box-sizing:border-box;
+  border:1px solid #e5e7eb;
+  border-bottom:1px solid var(--CoolGray-30,#C1C7CD);
+  background:var(--CoolGray-10,#F2F4F8);
+  color:#111827;
+  font-size:16px;
+  line-height:24px;
+  outline:none;
+  transition: border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+
+/* Select용 래퍼 + 화살표 */
+.selectWrap {
+  position: relative;
+}
+.select {
+  appearance: none; 
+  background-image: linear-gradient(180deg, transparent, transparent);
+}
+.selectWrap::after {
+  content: "▾";
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  color: #6b7280;
+  pointer-events: none;
+}
+
+.input:focus {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+  background: #fff;
+}
+
+/* 기존 .invalid, .helper를 아래처럼 교체/추가 */
+.invalid {
+  border-color: var(--error, #D32F2F) !important;
+  background: #fff !important;
+}
+
+.helper {
+  margin-top: 4px;
+  color: var(--error, #D32F2F);
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Noto Sans KR", sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 140%; /* 16.8px */
+}
+
+/* 포커스일 때 에러가 우선 보이도록 순서 보정 (선택) */
+.input:focus.invalid {
+  box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.15);
+}
+
+
+/* 버튼 */
+.primary {
+  height: 46px;
+  border-radius: 10px;
+  border: none;
+  background: #001f66;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 6px;
+}
+.primaryDisabled {
+  background: #bfc4cc;   /* 회색(비활성) */
+  cursor: not-allowed;
+}
+
+.serverError {
+  background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca;
+  padding: 10px 12px; border-radius: 8px; margin-bottom: 10px; text-align: center;
+}
+
+/* 반응형 */
+@media (max-width: 560px) {
+  .row2 { grid-template-columns: 1fr; }
+  .modal { padding: 24px 18px 18px; }
+}
+

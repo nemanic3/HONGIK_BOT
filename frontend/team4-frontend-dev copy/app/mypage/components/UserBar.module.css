@@ -1,0 +1,70 @@
+.box{
+  width: 22rem;
+  height: 670px;
+
+  display: flex;
+  padding: 3rem 3.2rem 10px 32px;
+  flex-direction: column;
+  justify-content: space between;
+  align-items: center;
+
+  border-radius: 25px;
+  background: #FFF; 
+  box-shadow: -1px -1px 4px 0 rgba(5, 1, 74, 0.05), 1px 1px 4px 0 rgba(5, 1, 74, 0.05);
+  margin-top: 52.5px;
+  margin-left: 170px;
+}
+.name{
+  width: 140px;
+  height: 31px;
+
+  color: #000;
+  font-size: 22px;
+  font-weight: 500;
+  font-style: normal;
+  line-height: 140%;
+
+  
+}
+.student_id{
+  width: 140px;
+  height: 20px;
+
+  color: #000;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 140%;
+
+  margin-top: 15px;
+}
+.major{
+  margin-top: 5px;
+  width: 140px;
+  height: 20px;
+
+  color: #000;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 140%;
+}
+.sbox{
+  width: 180px;
+  height: 300px;
+
+  display: flex;
+  padding: 30px 32px;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+
+  border-radius: 25px;
+  background: #EAF5FF;
+  
+
+
+  margin-top: 244px;
+  
+
+}

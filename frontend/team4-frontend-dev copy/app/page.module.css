@@ -1,0 +1,93 @@
+.main {
+  position: relative;
+  min-height: 100vh;
+  height: 100svh; /* 화면 전체 채우기~ */
+  overflow: hidden;
+  text-align: center;
+  color: #fff;
+}
+
+.background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -1;
+}
+
+.centerContent {
+  position: relative;
+  top: 25%;
+  transform: translateY(-25%);
+}
+
+.subtitle {
+  color: #0B0A7E;
+  text-align: center;
+  font-size: 25px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 22px; /* 88% */
+}
+
+.titleImage {
+  position: relative;
+  width: fit-content;
+  height: fit-content;
+  max-width: 500px;
+  width: 90%;
+  height: auto;
+  margin-bottom: 2rem;
+}
+
+.buttonRow {
+  display: flex;
+  gap: 3.34rem;
+  justify-content: center;
+  margin-bottom: 4rem;
+}
+
+.button {
+  background: var(--Button-Gradation, linear-gradient(180deg, #0C02B0 0%, var(--Hongik-Midnight-Blue, #05014A) 65.87%));
+  padding: 0.6rem 1.4rem; /* 상하 좌우 여백으로 높이 확보 */
+  display: flex; /* 텍스트 중앙정렬 */
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: light; /* line-height로 높이 맞추지 않음 */
+  text-decoration: none; /* 링크 밑줄 제거 */
+}
+
+
+.character {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 388px;
+  height: 237px;
+  margin-top: 15rem;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.fadeIn {
+  animation: fadeIn 280ms ease both;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

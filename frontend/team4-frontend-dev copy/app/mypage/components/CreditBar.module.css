@@ -1,0 +1,133 @@
+.box{
+  width: 869px;
+  height: 149px;
+
+  display: flex;
+  padding: 20px 28px 25px 28px;
+
+  align-items: center;
+  gap: 15px;
+
+  border-radius: 25px;
+
+  background: transparent;
+  box-shadow: none;
+
+  margin-left: 600px;
+  margin-top: -590px;
+}
+
+.title{
+  width: 330px;
+  height: 26px;
+
+  align-self: stretch;
+  color: var(--Dark-Gray, #52565F);
+  font-size: 18px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 140%; /* 28px */
+  margin-left: -200px;
+  margin-top: 10px;
+}
+
+.total{
+  width: 169px;
+  height: 85px;
+  display: flex;
+  padding: 30px 28px;
+  flex-direction: column;
+
+  gap: 15px;
+  align-self: stretch;
+
+  border-radius: 25px;
+  background: linear-gradient(180deg, #BADDFF 0%, #59ACFF 11.06%, var(--Hongik-Azure-Blue, #0381FE) 26.92%, var(--Hongik-Azure-Blue, #0381FE) 77.88%, #1F7BD7 98.91%);
+  box-shadow: -1px -1px 4px 0 rgba(5, 1, 74, 0.10), 1px 1px 4px 0 rgba(5, 1, 74, 0.25);
+
+  margin-top: 50px;
+  margin-left: -350px; /* ⬅️ px 오타 수정 */
+}
+
+.tcredit{
+  color: #EEEEF0;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 140%;
+  margin-left: 30px;
+  margin-top: -30px;
+}
+
+.major,.dvbol,.general{
+  width: 117px;
+  height: 85px;
+  display: flex;
+  padding: 30px 28px;
+  flex-direction: column;
+  gap: 15px;
+  align-self: stretch;
+
+  border-radius: 25px;
+  background: linear-gradient(180deg, rgba(186, 221, 255, 0.30) 0%, rgba(89, 172, 255, 0.30) 11.06%, var(--Hongik-Azure-Blue, rgba(3, 129, 254, 0.30)) 26.92%, var(--Hongik-Azure-Blue, rgba(3, 129, 254, 0.30)) 77.88%, rgba(31, 123, 215, 0.30) 98.91%);
+  box-shadow: 1px 1px 2px 0 rgba(5, 1, 74, 0.25);
+
+  margin-top: 50px;
+}
+
+.mcredit,.gcredit,.dcredit{
+  width: 72px;
+  height: 18px;
+
+  color: #52565F;
+  font-size: 18px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 140%;
+
+  margin-top: -10px;
+}
+
+
+.tc{
+  width: 132px;
+  height: 38px;
+
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 140%; /* 42px */
+
+  background: linear-gradient(180deg, var(--white, #FFF) 55.64%, #B8CEFF 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+
+  margin-top: 10px;
+  margin-left: 20px;
+}
+
+.mc,.gc,.dc{
+  width: 90px;
+  height: 28px;
+
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 140%; /* 30.8px */
+  letter-spacing: -0.6px;
+  margin-top: -3px;
+
+  background: linear-gradient(180deg, var(--Dark-Gray, #52565F) 33.17%, #000 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ⬇️ 오른쪽 값( MSC / SW / 특교 / 졸업논문 ) 정렬 수정 */
+
+/* (선택) 이전에 사용하던 보조 클래스들 - 지금은 필수 아님 */
+.icon{
+  margin-top: -10px;
+}
