@@ -2,10 +2,14 @@ from django.urls import path
 from .views import (
     TranscriptUploadView,
     TranscriptStatusView,
-    TranscriptParsedView
+    TranscriptParsedView,
+    TranscriptDetailView,
+    TranscriptConfirmView,
 )
 
 urlpatterns = [
+    path('detail/<int:transcript_id>/', TranscriptDetailView.as_view(), name='transcript-detail'),
+    path('confirm/<int:transcript_id>/', TranscriptConfirmView.as_view(), name='transcript-confirm'),
     # 1) POST   /api/transcripts/{user_id}/      -> 업로드
     path('<int:user_id>/', TranscriptUploadView.as_view(), name='transcript-upload'),
     # 2) GET    /api/transcripts/status/{user_id}/ -> OCR/파싱 상태 조회

@@ -1,0 +1,17 @@
+# Local environments and generated files
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+node_modules/
+.next/
+
+# Private local data and backups (already tracked files remain tracked)
+.backups/
+*.sqlite3
+*.sqlite3-*
+backend/media/
+.env
+.env.*
+!.env.example

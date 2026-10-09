@@ -2,8 +2,11 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from transcripts.models import Transcript
 from users.models import User
-from .models import GraduationRequirement
+from common.permissions import IsRequestedUser
+from .services import get_requirement_for_user
 from .serializers import GraduationStatusSerializer
+from common.course_schema import CourseSchemaError, normalize_course_document
+from common.transcript_data import valid_courses_for_analysis
 
 import re
 import unicodedata
@@ -38,21 +41,14 @@ def get_courses_from_parsed_data(parsed) -> list[dict]:
     - 권장: {"courses":[{...}]}
     - 과거: [{...}]
     """
-    if not parsed:
+    try:
+        return normalize_course_document(parsed)["courses"]
+    except CourseSchemaError:
         return []
-    if isinstance(parsed, dict):
-        return parsed.get("courses", []) or []
-    if isinstance(parsed, list):
-        return parsed
-    return []
 
 def get_valid_courses(transcript: Transcript) -> list[dict]:
     """F 성적 및 재수강 제외"""
-    all_courses = get_courses_from_parsed_data(transcript.parsed_data)
-    return [
-        c for c in all_courses
-        if c and (c.get("grade") != "F") and (not c.get("retake", False))
-    ]
+    return valid_courses_for_analysis(transcript)
 
 def distribute(total: int, n: int) -> list[int]:
     """총합을 n개로 최대한 고르게 분배 (드볼 영역 요구학점 추정용)"""
@@ -77,13 +73,13 @@ def analyze_graduation(user_id: int):
 
     # 2) 성적표
     transcript = Transcript.objects.filter(user_id=user_id).order_by("-created_at").first()
-    if not transcript or not transcript.parsed_data:
+    if not transcript or transcript.get_analysis_document() is None:
         return {"error": "성적표 데이터가 없습니다.", "status": 404}
 
     courses = get_valid_courses(transcript)
 
-    # 3) 졸업요건 (입학년도 미사용: 전공으로만 매칭)
-    requirement = GraduationRequirement.objects.filter(major=user.major).first()
+    # 3) Exact major/cohort, or unambiguous legacy compatibility.
+    requirement = get_requirement_for_user(user)
     if not requirement:
         return {"error": "졸업 요건 데이터가 없습니다.", "status": 500}
 
@@ -234,7 +230,7 @@ def analyze_graduation(user_id: int):
 # View 클래스들 (기존 1~7 유지)
 # ---------------------------
 class GeneralCoursesView(generics.RetrieveAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsRequestedUser]
 
     def get(self, request, user_id):
         result = analyze_graduation(user_id)
@@ -244,7 +240,7 @@ class GeneralCoursesView(generics.RetrieveAPIView):
         # 실제 필수 교양 목록은 DB에서 code/name으로 꺼내는 게 맞지만,
         # 현재 모델상 general_must_courses에 저장되어 있으면 해당 값 사용
         user = User.objects.filter(id=user_id).first()
-        req = GraduationRequirement.objects.filter(major=user.major).first() if user else None
+        req = get_requirement_for_user(user) if user else None
         general_must = [{"code": i.get("code",""), "name": i.get("name","")} for i in (req.general_must_courses or [])] if req else []
 
         data = result["data"]
@@ -255,7 +251,7 @@ class GeneralCoursesView(generics.RetrieveAPIView):
 
 
 class MajorCoursesView(generics.RetrieveAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsRequestedUser]
 
     def get(self, request, user_id):
         result = analyze_graduation(user_id)
@@ -277,7 +273,7 @@ class MajorCoursesView(generics.RetrieveAPIView):
 
 
 class TotalCreditView(generics.RetrieveAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsRequestedUser]
 
     def get(self, request, user_id):
         result = analyze_graduation(user_id)
@@ -287,7 +283,7 @@ class TotalCreditView(generics.RetrieveAPIView):
 
 
 class GeneralCreditView(generics.RetrieveAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsRequestedUser]
 
     def get(self, request, user_id):
         user = User.objects.filter(id=user_id).first()
@@ -295,22 +291,22 @@ class GeneralCreditView(generics.RetrieveAPIView):
             return Response({"error": "사용자를 찾을 수 없습니다."}, status=404)
 
         transcript = Transcript.objects.filter(user_id=user_id).order_by("-created_at").first()
-        if not transcript or not transcript.parsed_data:
+        if not transcript or transcript.get_analysis_document() is None:
             return Response({"general_credit": 0}, status=200)
 
         # 졸업요건에서 드볼 영역명 리스트 가져오기
-        req = GraduationRequirement.objects.filter(major=user.major).first()
+        req = get_requirement_for_user(user)
         drbol_areas = []
         if req and req.drbol_areas:
             drbol_areas = [a.strip() for a in req.drbol_areas.split(",") if a.strip()]
 
-        courses = transcript.parsed_data.get("courses", [])
+        courses = get_valid_courses(transcript)
         general_credit = 0
 
         for c in courses:
             ctype  = (c.get("type") or "").strip()                # 예: 교양 / 드볼 / 특성화교양 / 전공
             mfield = (c.get("major_field") or "").strip()         # 예: 교양필수 / 교양선택 / 드볼 영역명 등
-            credit = int(c.get("credit") or 0)
+            credit = c["credit"]
 
             is_general_type  = ctype in {"교양", "드볼", "특성화교양"}
             is_general_field = mfield in {"교양필수", "교양선택", "특성화교양"} or mfield in drbol_areas
@@ -322,7 +318,7 @@ class GeneralCreditView(generics.RetrieveAPIView):
 
 
 class MajorCreditView(generics.RetrieveAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsRequestedUser]
 
     def get(self, request, user_id):
         result = analyze_graduation(user_id)
@@ -332,7 +328,7 @@ class MajorCreditView(generics.RetrieveAPIView):
 
 
 class StatisticsCreditView(generics.RetrieveAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsRequestedUser]
 
     def get(self, request, user_id):
         result = analyze_graduation(user_id)
@@ -345,7 +341,7 @@ class StatisticsCreditView(generics.RetrieveAPIView):
 
 
 class StatusCreditView(generics.RetrieveAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsRequestedUser]
     serializer_class = GraduationStatusSerializer
 
     def get(self, request, user_id):
@@ -359,7 +355,7 @@ class StatusCreditView(generics.RetrieveAPIView):
 # ✅ 추가 8) 전체 필수 미이수 (major/general)
 # ---------------------------
 class RequiredMissingView(generics.RetrieveAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsRequestedUser]
 
     def get(self, request, user_id):
         # 공통
@@ -367,9 +363,9 @@ class RequiredMissingView(generics.RetrieveAPIView):
         if not user:
             return Response({"error": "사용자를 찾을 수 없습니다."}, status=404)
         transcript = Transcript.objects.filter(user_id=user_id).order_by("-created_at").first()
-        if not transcript or not transcript.parsed_data:
+        if not transcript or transcript.get_analysis_document() is None:
             return Response({"error": "성적표 데이터가 없습니다."}, status=404)
-        requirement = GraduationRequirement.objects.filter(major=user.major).first()
+        requirement = get_requirement_for_user(user)
         if not requirement:
             return Response({"error": "졸업 요건 데이터가 없습니다."}, status=500)
 
@@ -405,16 +401,16 @@ class RequiredMissingView(generics.RetrieveAPIView):
 # ✅ 추가 9) 미이수 드볼 영역
 # ---------------------------
 class DrbolMissingView(generics.RetrieveAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsRequestedUser]
 
     def get(self, request, user_id):
         user = User.objects.filter(id=user_id).first()
         if not user:
             return Response({"error": "사용자를 찾을 수 없습니다."}, status=404)
         transcript = Transcript.objects.filter(user_id=user_id).order_by("-created_at").first()
-        if not transcript or not transcript.parsed_data:
+        if not transcript or transcript.get_analysis_document() is None:
             return Response({"error": "성적표 데이터가 없습니다."}, status=404)
-        requirement = GraduationRequirement.objects.filter(major=user.major).first()
+        requirement = get_requirement_for_user(user)
         if not requirement:
             return Response({"error": "졸업 요건 데이터가 없습니다."}, status=500)
 
@@ -492,16 +488,16 @@ class DrbolMissingView(generics.RetrieveAPIView):
 # ✅ 추가 10) 필수 과목 로드맵
 # ---------------------------
 class RequiredRoadmapView(generics.RetrieveAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsRequestedUser]
 
     def get(self, request, user_id):
         user = User.objects.filter(id=user_id).first()
         if not user:
             return Response({"error": "사용자를 찾을 수 없습니다."}, status=404)
         transcript = Transcript.objects.filter(user_id=user_id).order_by("-created_at").first()
-        if not transcript or not transcript.parsed_data:
+        if not transcript or transcript.get_analysis_document() is None:
             return Response({"error": "성적표 데이터가 없습니다."}, status=404)
-        requirement = GraduationRequirement.objects.filter(major=user.major).first()
+        requirement = get_requirement_for_user(user)
         if not requirement:
             return Response({"error": "졸업 요건 데이터가 없습니다."}, status=500)
 

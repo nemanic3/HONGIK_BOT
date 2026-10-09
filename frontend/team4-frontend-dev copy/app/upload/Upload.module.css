@@ -1,4 +1,4 @@
-:global(header) {
+.headerWrapper :global(header) {
   width: 100%;
   margin: 0;
   padding: 0;
@@ -12,7 +12,7 @@
   transition: opacity 0.5s ease;
 }
 
-:global(header).fade-out {
+.headerWrapper :global(header.fade-out) {
   opacity: 0;
 }
 

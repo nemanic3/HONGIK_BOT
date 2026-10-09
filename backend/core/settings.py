@@ -1,11 +1,16 @@
 import os
+from django.core.management.utils import get_random_secret_key
+from django.core.exceptions import ImproperlyConfigured
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # 🔐 데모 키 — 실제 배포에서는 환경변수로 빼세요
-SECRET_KEY = 'django-insecure-u&$kxf&th_n+=5k%&#4hec)^k-c)(yn+k%-am_as7uz2^qusbc'
-DEBUG = True
+
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY') or get_random_secret_key()
+DEBUG = os.environ.get('DJANGO_DEBUG', '1') == '1'
+if not DEBUG and not os.environ.get('DJANGO_SECRET_KEY'):
+    raise ImproperlyConfigured('DJANGO_SECRET_KEY is required when DJANGO_DEBUG=0')
 ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
@@ -108,3 +113,11 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'Asia/Seoul'
+
+# Explicit local mode; never silently pretend a queued task is running.
+TRANSCRIPT_PROCESSING = os.environ.get('TRANSCRIPT_PROCESSING', 'celery')
+# Optional dotted callable: PNG bytes -> {'text': str, 'provider': str, ...}.
+# No heavyweight Paddle imports or fabricated image text by default.
+TRANSCRIPT_IMAGE_OCR_PROVIDER = os.environ.get('TRANSCRIPT_IMAGE_OCR_PROVIDER', '')
+CELERY_TASK_PUBLISH_RETRY = False
+CELERY_BROKER_CONNECTION_TIMEOUT = 2

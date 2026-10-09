@@ -1,4 +1,4 @@
-"use clinet";
+"use client";
 
 
 import Image from "next/image";
@@ -9,7 +9,7 @@ export default function Header(){
     <header className={styles.header}>
       <div className={styles.logoCharacter}>
         <Image
-          src="/character.png"
+          src="/bottom.gif"
           alt="Character"
           width={101}
           height={62}

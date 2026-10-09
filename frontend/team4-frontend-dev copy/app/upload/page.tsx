@@ -1,30 +1,17 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { api, errorMessage } from "../../lib/api";
+import { reviewHref, validateUploads } from "../../lib/contracts";
+import { uploadTranscript } from "../../lib/flows";
 import { useRouter } from "next/navigation";
 import styles from "./Upload.module.css";
 import Header from "../../components/Header/Header";
 
-const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
-const ALLOWED_MIME = ["application/pdf", "image/png", "image/jpeg"] as const;
-type AllowedMime = typeof ALLOWED_MIME[number];
-
-// 토큰 payload(베이스64) 읽어서 user 식별자 추출(백엔드에 따라 'id' 또는 'user_id')
-function readUserIdFromJWT(token: string | null): string | null {
-  if (!token) return null;
-  try {
-    const payload = token.split(".")[1];
-    const json = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
-    const val = json?.id ?? json?.user_id ?? json?.uid ?? null;
-    return val != null ? String(val) : null;
-  } catch {
-    return null;
-  }
-}
-
 export default function UploadPage() {
   const router = useRouter();
+  const controller = useRef<AbortController | null>(null);
+  useEffect(() => { controller.current = new AbortController(); return () => controller.current?.abort(); }, []);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [files, setFiles] = useState<File[]>([]);
@@ -32,12 +19,8 @@ export default function UploadPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  // 단일 파일 검증
-  const validateOne = (f: File): string | null => {
-    const okType = (ALLOWED_MIME as readonly string[]).includes(f.type as AllowedMime);
-    if (!okType) return `지원하지 않는 파일 형식: ${f.name} (PDF/PNG/JPG만 가능)`;
-    if (f.size > MAX_SIZE_BYTES) return `용량 초과(>5MB): ${f.name}`;
-    return null;
+  const validateOne = (file: File): string | null => {
+    try { validateUploads([file]); return null; } catch (error) { return errorMessage(error); }
   };
 
   // 여러 개 추가(파일 선택/드롭 공통)
@@ -60,7 +43,7 @@ export default function UploadPage() {
     }
 
     if (errors.length) setMessage(errors.join("\n"));
-    setFiles(next);
+    try { validateUploads(next); setFiles(next); } catch (error) { setMessage(errorMessage(error)); }
 
     // 동일 파일 다시 선택 가능하게 초기화
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -95,74 +78,27 @@ export default function UploadPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // 업로드
   const handleUpload = async () => {
-    if (files.length === 0) {
-      setMessage("업로드할 파일을 선택해주세요.");
-      return;
-    }
-
-    const token = localStorage.getItem("accessToken");
-    const headers: HeadersInit = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-
-    // 토큰의 사용자 id와 localStorage.userId 불일치 감지
-    const tokenUserId = readUserIdFromJWT(token);
-    const storedUserId = localStorage.getItem("userId") ?? tokenUserId ?? "";
-    if (!storedUserId) {
-      setMessage("userId가 없습니다. 로그인 후 다시 시도해주세요.");
-      return;
-    }
-    if (tokenUserId && storedUserId && tokenUserId !== storedUserId) {
-      setMessage(`경고: 토큰 사용자(${tokenUserId})와 URL 사용자(${storedUserId})가 다릅니다.`);
-      // 진행은 계속하지만 서버에서 400/401 가능
-    }
-
-    const uploadUrl = `${API_BASE}/api/transcripts/${encodeURIComponent(storedUserId)}/`;
-
+    if (isUploading) return;
+    const signal = controller.current!.signal;
     try {
-      setIsUploading(true);
-      setMessage("업로드 중…");
-
-      const fd = new FormData();
-      // ✅ 포스트맨과 동일: 'files' 키로 여러 번 append
-      for (const f of files) {
-        fd.append("files", f, f.name);
-      }
-
-      const res = await fetch(uploadUrl, { method: "POST", headers, body: fd });
-
-      const ct = res.headers.get("content-type") || "";
-      const raw = await res.text();
-      const data = ct.includes("application/json")
-        ? (() => { try { return JSON.parse(raw); } catch { return null; } })()
-        : null;
-
-      if (res.status === 201) {
-        setMessage("업로드 완료! 처리 중입니다…");
-        setTimeout(() => router.push("/mypage"), 1500);
-      } else if (res.status === 400) {
-        setMessage(data?.error || "파일 형식 오류입니다.");
-      } else if (res.status === 401) {
-        setMessage("인증이 필요합니다. 로그인 후 다시 시도해주세요.");
-      } else {
-        setMessage(`업로드 실패(${res.status}). ${data?.error ?? raw ?? ""}`);
-      }
-    } catch (e: any) {
-      setMessage(e?.message || "네트워크 오류가 발생했습니다.");
-    } finally {
-      setIsUploading(false);
-    }
+      setIsUploading(true); setMessage("업로드 중…");
+      const result = await uploadTranscript(api(), files, signal);
+      if (signal.aborted) return;
+      localStorage.setItem('transcriptId', result.transcript_id);
+      router.push(reviewHref(result.transcript_id));
+    } catch (error) { if (!signal.aborted) setMessage(errorMessage(error)); }
+    finally { if (!signal.aborted) setIsUploading(false); }
   };
 
   return (
     <>
-      <Header />
+      <div className={styles.headerWrapper}><Header /></div>
       <div className={styles.page}>
         <div className={styles.textbox}>
           <div className={styles.title}>성적표를 업로드 해 주세요.</div>
           <div className={styles.subtitle}>
-            5MB 이하의 PDF/PNG/JPG 파일을 여러 개 선택하거나 드래그&드롭으로 추가할 수 있어요.
+            합계 5MiB 이하의 PDF/PNG/JPG 파일을 여러 개 선택하거나 드래그&드롭으로 추가할 수 있어요.
           </div>
           {message && <div className={styles.notice} aria-live="polite">{message}</div>}
         </div>

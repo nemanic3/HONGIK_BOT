@@ -90,7 +90,7 @@ class MeView(generics.RetrieveAPIView):
 
         sid = request.query_params.get('student_id')
 
-        if sid.upper() != user.student_id:
+        if sid is not None and sid.upper() != user.student_id:
             return Response(
                 {"detail": "해당 학번의 사용자를 찾을 수 없습니다."},
                 status=status.HTTP_404_NOT_FOUND
@@ -110,7 +110,7 @@ class UpdateProfileView(generics.UpdateAPIView):
 
         # 1) URL 쿼리 student_id 검사
         sid = request.query_params.get('student_id')
-        if not sid or sid.upper() != user.student_id:
+        if sid is not None and sid.upper() != user.student_id:
             return Response(
                 {"detail": "해당 학번의 사용자를 찾을 수 없습니다."},
                 status=status.HTTP_404_NOT_FOUND

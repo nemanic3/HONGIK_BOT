@@ -1,31 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { api, errorMessage } from "../../lib/api";
 import { useRouter } from "next/navigation";
 import styles from "./LoginModal.module.css";
 
 type Props = { onClose: () => void };
-
-// JWT payload 디코더 (base64url → JSON)
-function decodeJwtPayload(token: string): any | null {
-  try {
-    const [, payload] = token.split(".");
-    if (!payload) return null;
-    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
-    const jsonStr = decodeURIComponent(
-      atob(base64)
-        .split("")
-        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join("")
-    );
-    return JSON.parse(jsonStr);
-  } catch {
-    return null;
-  }
-}
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
 
 export default function LoginModal({ onClose }: Props) {
   const router = useRouter();
@@ -63,91 +43,24 @@ export default function LoginModal({ onClose }: Props) {
     Boolean((errors as any)[k] && (touched as any)[k]);
   const canSubmit = Boolean(studentId && password && !errors.id && !errors.pw);
 
-  // 프로필 조회해서 로컬스토리지에 저장
-  async function fetchAndStoreProfile(sid: string, accessToken: string) {
-    try {
-      const res = await fetch(
-        `${API_BASE}/api/users/me/?student_id=${encodeURIComponent(sid)}`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-      const data = await res.json().catch(() => null);
-
-      if (res.ok && data) {
-        // 개별 키 + 통합 객체 둘 다 저장
-        if (data.id != null) localStorage.setItem("userId", String(data.id));
-        if (data.student_id) localStorage.setItem("studentId", data.student_id);
-        if (data.full_name) localStorage.setItem("fullName", data.full_name);
-        if (data.current_year != null)
-          localStorage.setItem("currentYear", String(data.current_year));
-        if (data.major) localStorage.setItem("major", data.major);
-
-        localStorage.setItem("user", JSON.stringify(data)); // 통합 저장
-      } else {
-        console.warn("GET /users/me failed", res.status, data);
-      }
-    } catch (e) {
-      console.warn("GET /users/me error", e);
-    }
-  }
-
+  const controller = useRef<AbortController | null>(null);
+  useEffect(() => {
+    controller.current = new AbortController();
+    return () => controller.current?.abort();
+  }, []);
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setTouched({ id: true, pw: true });
-    setServerError(null);
-    if (!canSubmit) return;
-
+    if (!canSubmit || loading) return;
+    const signal = controller.current!.signal;
+    setLoading(true); setServerError(null);
     try {
-      setLoading(true);
-      const res = await fetch(`${API_BASE}/api/users/login/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ student_id: studentId, password }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        const msg =
-          typeof data?.error === "string"
-            ? data.error
-            : "아이디나 비밀번호가 일치하지 않습니다. 다시 시도해주세요.";
-        setServerError(msg);
-        return;
-      }
-
-      // 토큰 저장
-      if (data?.access) localStorage.setItem("accessToken", data.access);
-      if (data?.refresh) localStorage.setItem("refreshToken", data.refresh);
-
-      // access에서 user_id/exp 추출
-      const payload =
-        typeof data?.access === "string" ? decodeJwtPayload(data.access) : null;
-      const inferredId =
-        payload?.user_id ?? payload?.sub ?? payload?.uid ?? payload?.id ?? null;
-
-      if (inferredId != null) localStorage.setItem("userId", String(inferredId));
-      if (payload?.exp)
-        localStorage.setItem("accessExp", String(payload.exp * 1000));
-
-      // 학번은 바로 저장
-      localStorage.setItem("studentId", studentId);
-
-      // 내 정보 조회해서 이름/학과/학년/가입 id 저장
-      if (data?.access) {
-        await fetchAndStoreProfile(studentId, data.access);
-      }
-
-      /** ✅ 같은 탭에서도 즉시 반영되도록: 갱신 이벤트 발사 */
+      await api().login(studentId, password, signal);
+      if (signal.aborted) return;
       window.dispatchEvent(new Event("user-updated"));
-
-      onClose();
-      router.push("/success");
-    } catch (err) {
-      console.error(err);
-      setServerError("서버와 통신 중 문제가 발생했습니다.");
-    } finally {
-      setLoading(false);
-    }
+      router.push("/success"); onClose();
+    } catch (error) { if (!signal.aborted) setServerError(errorMessage(error)); }
+    finally { if (!signal.aborted) setLoading(false); }
   }
 
   return (
@@ -172,7 +85,7 @@ export default function LoginModal({ onClose }: Props) {
               placeholder="학번을 입력해주세요."
               value={studentId}
               onChange={(e) =>
-                setStudentId(e.target.value.replace(/\s+/g, "").toUpperCase())
+                setStudentId(e.target.value)
               }
               onBlur={() => setTouched((t) => ({ ...t, id: true }))}
             />

@@ -1,7 +1,7 @@
 # users/models.py
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.core.validators import RegexValidator
+from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 
 class User(AbstractUser):
     # 영문자 1자 + 숫자 6자리 (예: C135195)
@@ -25,8 +25,17 @@ class User(AbstractUser):
             )
         ]
     )
-    current_year  = models.PositiveSmallIntegerField(null=True, blank=True)
+    current_year = models.PositiveSmallIntegerField(null=True, blank=True)
+    # Explicit cohort; do not derive it from student_id or current_year.
+    admission_year = models.PositiveSmallIntegerField(
+        null=True, blank=True, db_index=True,
+        validators=[MinValueValidator(1000), MaxValueValidator(9999)],
+    )
     major = models.CharField(max_length=100, blank=True)
+    accreditation_track = models.CharField(
+        max_length=20, blank=True, default="",
+        choices=[("", "확인 필요"), ("accredited", "공학교육 인증"), ("non_accredited", "비인증")],
+    )
 
     USERNAME_FIELD = 'student_id'
     REQUIRED_FIELDS = ['full_name']

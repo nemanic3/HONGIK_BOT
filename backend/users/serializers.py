@@ -48,7 +48,7 @@ class SignupSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['student_id', 'full_name', 'current_year', 'major', 'password']
+        fields = ['student_id', 'full_name', 'current_year', 'admission_year', 'accreditation_track', 'major', 'password']
 
     def validate_student_id(self, value):
         # API 레벨에서 대문자로 정규화
@@ -60,6 +60,9 @@ class SignupSerializer(serializers.ModelSerializer):
             student_id=validated_data['student_id'],
             full_name=validated_data['full_name'],
             current_year=validated_data['current_year'],
+            admission_year=validated_data.get('admission_year'),
+            accreditation_track=validated_data.get('accreditation_track', ''),
+
             major=validated_data['major'],
             username=validated_data['student_id'],
         )
@@ -78,8 +81,9 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['student_id', 'full_name', 'current_year', 'major', 'password']
-        read_only_fields = ['student_id']
+        fields = ['student_id', 'full_name', 'current_year', 'admission_year', 'accreditation_track', 'major', 'password']
+        fields = ['id', *fields]
+        read_only_fields = ['id', 'student_id']
 
     def update(self, instance, validated_data):
         # 1) password 처리

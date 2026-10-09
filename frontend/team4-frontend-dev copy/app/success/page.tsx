@@ -9,8 +9,8 @@ import { useRouter } from "next/navigation";
 export default function SuccessPage() {
   const router = useRouter();
 
-  // 기본값: "김컴공"
-  const [fullName, setFullName] = useState("김컴공");
+  // 로그인된 프로필만 표시합니다.
+  const [fullName, setFullName] = useState("");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -51,7 +51,7 @@ export default function SuccessPage() {
     <div className={styles.page}>
       <Header />
       <div className={styles.title}>
-        {fullName}님,
+        {fullName ? `${fullName}님,` : "사용자님,"}
         <br />
         환영합니다!
       </div>

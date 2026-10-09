@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { api, errorMessage } from "../../lib/api";
+import { profileSelection } from "../../lib/contracts";
 import styles from "./SignUpModal.module.css";
 
 type Props = { onClose: () => void };
@@ -12,9 +14,11 @@ type Errors = {
   college?: string;
   department?: string;
   password?: string;
+  admissionYear?: string;
+  track?: string;
 };
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
+
 
 export default function SignUpModal({ onClose }: Props) {
   // ESC 닫기 + 바디 스크롤 잠금
@@ -29,6 +33,10 @@ export default function SignUpModal({ onClose }: Props) {
     };
   }, [onClose]);
 
+  const controller = useRef<AbortController | null>(null);
+  useEffect(() => { controller.current = new AbortController(); return () => controller.current?.abort(); }, []);
+  const [admissionYear, setAdmissionYear] = useState("");
+  const [track, setTrack] = useState("");
   // 폼 상태
   const [name, setName] = useState("");
   const [studentId, setStudentId] = useState("");
@@ -56,14 +64,16 @@ export default function SignUpModal({ onClose }: Props) {
     if (!college) e.college = "소속 대학을 선택해주세요.";
     if (!department) e.department = "소속 학부를 선택해주세요.";
     if (password.length < 8) e.password = "비밀번호는 8자 이상 입력해주세요.";
+    if (!/^\d{4}$/.test(admissionYear) || Number(admissionYear) < 1900 || Number(admissionYear) > 2100) e.admissionYear = "입학 연도를 네 자리로 입력해주세요.";
+    if (!track) e.track = "공학 인증 여부를 선택해주세요.";
     return e;
-  }, [name, studentId, grade, college, department, password]);
+  }, [name, studentId, grade, college, department, password, admissionYear, track]);
 
   const isInvalid = (k: keyof Errors) => Boolean(errors[k] && touched[k]);
   const handleBlur = (k: keyof Errors) => setTouched((t) => ({ ...t, [k]: true }));
 
   const allFilled =
-    name && studentId && grade && college && department && password;
+    name && studentId && grade && college && department && password && admissionYear && track;
   const canSubmit = allFilled && Object.keys(errors).every((k) => !(errors as any)[k]);
 
   async function onSubmit(e: React.FormEvent) {
@@ -75,9 +85,11 @@ export default function SignUpModal({ onClose }: Props) {
       college: true,
       department: true,
       password: true,
+      admissionYear: true,
+      track: true,
     });
     setServerError(null);
-    if (!canSubmit) return;
+    if (!canSubmit || loading) return;
 
     const payload = {
       student_id: studentId,
@@ -85,40 +97,20 @@ export default function SignUpModal({ onClose }: Props) {
       current_year: Number(grade),
       major: department,
       password,
+      ...profileSelection(admissionYear, track),
     };
 
+    const signal = controller.current!.signal;
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/api/users/signup/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        let msg = `요청 실패 (${res.status})`;
-        try {
-          const data = await res.json();
-          if (typeof data?.message === "string") msg = data.message;
-          else if (typeof data?.detail === "string") msg = data.detail;
-          else if (data?.errors && typeof data.errors === "object") {
-            msg = Object.values<string | string[]>(data.errors)
-              .flat()
-              .join("\n");
-          }
-        } catch { /* ignore */ }
-        setServerError(msg);
-        return;
-      }
-
-      alert("회원가입이 완료되었습니다.");
+      await api().request('/api/users/signup/', {
+        method: 'POST', signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+      }, false);
+      if (signal.aborted) return;
+      alert("회원가입이 완료되었습니다. 로그인해주세요.");
       onClose();
-    } catch (err) {
-      console.error(err);
-      setServerError("서버와 통신 중 문제가 발생했습니다.");
-    } finally {
-      setLoading(false);
-    }
+    } catch (error) { if (!signal.aborted) setServerError(errorMessage(error)); }
+    finally { if (!signal.aborted) setLoading(false); }
   }
 
   return (
@@ -158,7 +150,7 @@ export default function SignUpModal({ onClose }: Props) {
                 placeholder="학번을 입력해주세요."
                 value={studentId}
                 onChange={(e) =>
-                  setStudentId(e.target.value.replace(/\s+/g, "").toUpperCase())
+                  setStudentId(e.target.value)
                 }
                 onBlur={() => handleBlur("studentId")}
                 autoCapitalize="characters"
@@ -218,8 +210,7 @@ export default function SignUpModal({ onClose }: Props) {
                   onBlur={() => handleBlur("department")}
                 >
                   <option value="">소속 학부를 선택해주세요.</option>
-                  <option value="컴퓨터데이터공학부">컴퓨터데이터공학부</option>
-                  <option value="전자전기공학부">전자전기공학부</option>
+                  <option value="컴퓨터공학과">컴퓨터공학과</option>
                 </select>
               </div>
               {isInvalid("department") && (
@@ -228,6 +219,18 @@ export default function SignUpModal({ onClose }: Props) {
             </label>
           </div>
 
+          <div className={styles.row2}>
+            <label className={styles.label}>입학 연도
+              <input className={styles.input} value={admissionYear} onChange={e => setAdmissionYear(e.target.value)} inputMode="numeric" placeholder="예: 2024" onBlur={() => handleBlur('admissionYear')} />
+              {isInvalid('admissionYear') && <span className={styles.helper}>{errors.admissionYear}</span>}
+            </label>
+            <label className={styles.label}>공학 인증 트랙
+              <select className={styles.input} value={track} onChange={e => setTrack(e.target.value)} onBlur={() => handleBlur('track')}>
+                <option value="">선택해주세요</option><option value="accredited">공학 인증</option><option value="non_accredited">비인증</option>
+              </select>
+              {isInvalid('track') && <span className={styles.helper}>{errors.track}</span>}
+            </label>
+          </div>
           {/* 비밀번호 */}
           <label className={styles.label}>
             비밀번호

@@ -1,42 +1,21 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { api, errorMessage } from "../../lib/api";
+import { reviewHref, validateUploads } from "../../lib/contracts";
+import { uploadTranscript } from "../../lib/flows";
 import styles from "./UploadTranscriptModal.module.css";
 
 type Props = {
   onClose: () => void;
-  onUploaded?: (file?: File) => void; // 업로드 후 후처리 필요하면 사용
+  onUploaded?: (transcriptId: string) => void; // 업로드 후 후처리 필요하면 사용
 };
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
-const MAX_SIZE = 5 * 1024 * 1024; // 5MB
-const ALLOW_EXT = ["pdf", "png", "jpg", "jpeg"];
-
-function decodeJwtPayload(token: string): any | null {
-  try {
-    const [, payload] = token.split(".");
-    if (!payload) return null;
-    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
-    return JSON.parse(atob(base64));
-  } catch {
-    return null;
-  }
-}
-
-function getUserIdFromStorage(): string | null {
-  try {
-    const u = JSON.parse(localStorage.getItem("user") || "{}");
-    if (u?.id != null) return String(u.id);
-  } catch {}
-  const saved = localStorage.getItem("userId");
-  if (saved) return saved;
-  const token = localStorage.getItem("accessToken") || "";
-  if (!token) return null;
-  const p = decodeJwtPayload(token);
-  return p?.user_id ?? p?.sub ?? p?.uid ?? p?.id ?? null;
-}
-
 export default function UploadTranscriptModal({ onClose, onUploaded }: Props) {
+  const router = useRouter();
+  const controller = useRef<AbortController | null>(null);
+  useEffect(() => { controller.current = new AbortController(); return () => controller.current?.abort(); }, []);
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -64,17 +43,7 @@ export default function UploadTranscriptModal({ onClose, onUploaded }: Props) {
 
   const pickFile = (f?: File | null) => {
     if (!f) return setFile(null);
-    // 5MB 제한
-    if (f.size > MAX_SIZE) {
-      setServerError("파일 크기가 5MB를 초과합니다.");
-      return;
-    }
-    // 확장자 체크 (accept로 1차 제한하고 한 번 더 체크)
-    const ext = f.name.split(".").pop()?.toLowerCase() || "";
-    if (!ALLOW_EXT.includes(ext)) {
-      setServerError("지원하지 않는 파일 형식입니다. (PDF/JPG/PNG)");
-      return;
-    }
+    try { validateUploads([f]); } catch (error) { setFile(null); setServerError(errorMessage(error)); return; }
     setFile(f);
   };
 
@@ -90,60 +59,19 @@ export default function UploadTranscriptModal({ onClose, onUploaded }: Props) {
   };
   const onDragLeave = () => setDragOver(false);
 
-  // 실제 업로드
   const handleConfirm = async () => {
-    if (!file) return;
-    const userId = getUserIdFromStorage();
-    if (!userId) {
-      setServerError("로그인이 필요합니다. 다시 로그인해 주세요.");
-      return;
-    }
-
+    if (!file || loading) return;
+    const signal = controller.current!.signal;
     try {
       setLoading(true);
-      const form = new FormData();
-      form.append("file", file);
-
-      const access = localStorage.getItem("accessToken") || "";
-
-      const res = await fetch(`${API_BASE}/api/transcripts/${userId}/`, {
-        method: "POST",
-        headers: access ? { Authorization: `Bearer ${access}` } : undefined,
-        body: form, // ← FormData 사용 시 Content-Type 직접 지정 금지
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (res.status === 201) {
-        // { message: "업로드 완료", status: "processing" }
-        onUploaded?.(file);
-        onClose();
-        return;
-      }
-
-      if (res.status === 401) {
-        setServerError("인증이 필요합니다. 다시 로그인해 주세요.");
-        return;
-      }
-
-      if (res.status === 400) {
-        setServerError(
-          typeof data?.error === "string"
-            ? data.error
-            : "지원하지 않는 파일 형식입니다."
-        );
-        return;
-      }
-
-      setServerError(
-        typeof data?.error === "string" ? data.error : "업로드에 실패했습니다."
-      );
-    } catch (e) {
-      console.error(e);
-      setServerError("네트워크 오류로 업로드에 실패했습니다.");
-    } finally {
-      setLoading(false);
-    }
+      const result = await uploadTranscript(api(), [file], signal);
+      if (signal.aborted) return;
+      localStorage.setItem('transcriptId', result.transcript_id);
+      onUploaded?.(result.transcript_id);
+      router.push(reviewHref(result.transcript_id));
+      onClose();
+    } catch (error) { if (!signal.aborted) setServerError(errorMessage(error)); }
+    finally { if (!signal.aborted) setLoading(false); }
   };
 
   return (
@@ -166,7 +94,7 @@ export default function UploadTranscriptModal({ onClose, onUploaded }: Props) {
           onDragLeave={onDragLeave}
           onClick={openPicker}
         >
-          <img src="/image-placeholder.svg" alt="" className={styles.placeholder} />
+          <img src="/Image_icon.svg" alt="" className={styles.placeholder} />
         </div>
 
         <div className={styles.helperText}>

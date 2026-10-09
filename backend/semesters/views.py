@@ -1,9 +1,11 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, permissions
 from transcripts.models import Transcript
-from analysis.models import GraduationRequirement
+from analysis.services import get_requirement_for_user
 from users.models import User
+from common.permissions import IsRequestedUser
+from common.transcript_data import valid_courses_for_analysis
 
 import re
 import unicodedata
@@ -38,8 +40,7 @@ def get_valid_courses(transcript):
     """
     F 성적 및 재수강 과목 제외한 유효 과목 리스트 반환
     """
-    courses = transcript.parsed_data.get("courses", [])
-    return [c for c in courses if c.get("grade") != "F" and not c.get("retake", False)]
+    return valid_courses_for_analysis(transcript)
 
 def semester_sort_key(sem):
     try:
@@ -49,11 +50,15 @@ def semester_sort_key(sem):
         return (99, 9)
 
 
+class OwnerAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsRequestedUser]
+
+
 # ---------- 1) 학기별 전체 이수 현황 ----------
-class SemesterCourseListView(APIView):
+class SemesterCourseListView(OwnerAPIView):
     def get(self, request, user_id):
         transcript = Transcript.objects.filter(user_id=user_id).last()
-        if not transcript or not transcript.parsed_data:
+        if not transcript or transcript.get_analysis_document() is None:
             return Response({"error": "성적표 데이터가 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
         courses = get_valid_courses(transcript)
@@ -69,10 +74,10 @@ class SemesterCourseListView(APIView):
 
 
 # ---------- 2) 특정 학기 과목 조회 ----------
-class SemesterDetailView(APIView):
+class SemesterDetailView(OwnerAPIView):
     def get(self, request, semester, user_id):
         transcript = Transcript.objects.filter(user_id=user_id).last()
-        if not transcript or not transcript.parsed_data:
+        if not transcript or transcript.get_analysis_document() is None:
             return Response({"error": "성적표 데이터가 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
         courses = [
@@ -83,17 +88,17 @@ class SemesterDetailView(APIView):
 
 
 # ---------- 3) 특정 학기의 전공필수 미이수 과목 ----------
-class SemesterMissingRequiredView(APIView):
+class SemesterMissingRequiredView(OwnerAPIView):
     def get(self, request, semester, user_id):
         transcript = Transcript.objects.filter(user_id=user_id).last()
-        if not transcript or not transcript.parsed_data:
+        if not transcript or transcript.get_analysis_document() is None:
             return Response({"error": "성적표 데이터가 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
         user = User.objects.filter(id=user_id).first()
         if not user:
             return Response({"error": "사용자를 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
-        requirement = GraduationRequirement.objects.filter(major=user.major).first()
+        requirement = get_requirement_for_user(user)
         if not requirement:
             return Response({"error": "졸업 요건 데이터가 없습니다."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -115,10 +120,10 @@ class SemesterMissingRequiredView(APIView):
 
 
 # ---------- 4) 전체 보기 + 필터 ----------
-class SemesterFilteredView(APIView):
+class SemesterFilteredView(OwnerAPIView):
     def get(self, request, user_id):
         transcript = Transcript.objects.filter(user_id=user_id).last()
-        if not transcript or not transcript.parsed_data:
+        if not transcript or transcript.get_analysis_document() is None:
             return Response({"error": "성적표 데이터가 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
         filter_param = request.GET.get("filter")  # 예: ?filter=전공,교양필수
@@ -145,21 +150,21 @@ class SemesterFilteredView(APIView):
 
 
 # ---------- 5) 전체 전공필수 미이수 과목 (플랫) ----------
-class MissingAllRequiredCoursesView(APIView):
+class MissingAllRequiredCoursesView(OwnerAPIView):
     """
     모든 학기에 걸친 전공필수 미이수 목록을 플랫 리스트로 반환
     응답 아이템: {code, name, semester}
     """
     def get(self, request, user_id):
         transcript = Transcript.objects.filter(user_id=user_id).last()
-        if not transcript or not transcript.parsed_data:
+        if not transcript or transcript.get_analysis_document() is None:
             return Response({"error": "성적표 데이터가 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
         user = User.objects.filter(id=user_id).first()
         if not user:
             return Response({"error": "사용자를 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
-        requirement = GraduationRequirement.objects.filter(major=user.major).first()
+        requirement = get_requirement_for_user(user)
         if not requirement:
             return Response({"error": "졸업 요건 데이터가 없습니다."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -179,21 +184,21 @@ class MissingAllRequiredCoursesView(APIView):
 
 
 # ---------- 6) 전체 학기별 전공필수 미이수 (by-semester) ----------
-class MissingRequiredBySemesterView(APIView):
+class MissingRequiredBySemesterView(OwnerAPIView):
     """
     모든 학기의 전공필수 미이수를 학기별로 묶어 반환
     응답: {"1-1":[{code,name}], ... , "기타":[...]}
     """
     def get(self, request, user_id):
         transcript = Transcript.objects.filter(user_id=user_id).last()
-        if not transcript or not transcript.parsed_data:
+        if not transcript or transcript.get_analysis_document() is None:
             return Response({"error": "성적표 데이터가 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
         user = User.objects.filter(id=user_id).first()
         if not user:
             return Response({"error": "사용자를 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
-        requirement = GraduationRequirement.objects.filter(major=user.major).first()
+        requirement = get_requirement_for_user(user)
         if not requirement:
             return Response({"error": "졸업 요건 데이터가 없습니다."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

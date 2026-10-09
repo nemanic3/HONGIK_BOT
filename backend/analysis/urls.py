@@ -1,4 +1,5 @@
 from django.urls import path
+from .report_views import GraduationReportView
 from .views import (
     GeneralCoursesView,
     MajorCoursesView,
@@ -14,6 +15,7 @@ from .views import (
 )
 
 urlpatterns = [
+    path("report/", GraduationReportView.as_view(), name="graduation-report"),
     # 전공/교양 구분
     path('courses/general/<int:user_id>/', GeneralCoursesView.as_view()),
     path('courses/major/<int:user_id>/',   MajorCoursesView.as_view()),
