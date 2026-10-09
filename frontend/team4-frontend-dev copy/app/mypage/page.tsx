@@ -28,7 +28,7 @@ export default function MyPage() {
     if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.currentTarget.click(); }
   };
   const goUpload = () => router.push("/upload");
-  const logout = () => { api().logout(); router.replace("/"); };
+  const logout = () => { void api().signOut(); router.replace("/"); };
   useEffect(() => {
     const identity = () => JSON.stringify([localStorage.getItem(SESSION_GENERATION_KEY), localStorage.getItem('accessToken')]);
     let session = identity();

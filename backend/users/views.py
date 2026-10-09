@@ -63,7 +63,10 @@ class LogoutView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         try:
-            RefreshToken(refresh_token).blacklist()
+            token = RefreshToken(refresh_token)
+            if str(token['user_id']) != str(request.user.pk):
+                raise ValueError('Token owner mismatch')
+            token.blacklist()
         except Exception:
             return Response(
                 {'detail': '유효하지 않은 토큰입니다.'},

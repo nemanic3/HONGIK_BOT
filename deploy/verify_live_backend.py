@@ -44,14 +44,15 @@ def signup(number):
     tokens = request('/api/users/login/', {'student_id': sid, 'password': 'Synthetic-smoke-only-2030!'})
     user = request('/api/users/me/', token=tokens['access'])
     request('/api/users/refresh/', {'refresh': tokens['refresh']})
-    return user['id'], tokens['access']
+    return user['id'], tokens['access'], tokens['refresh']
 
 
 request('/api/health/', proxy=False, expected=403)
 request('/api/users/me/', expected=401)
 request('/media/synthetic.pdf', expected=404)
-user, token = signup(880001)
-_, other = signup(880002)
+fixture_id = 800000 + int(uuid.uuid4().hex[:4], 16)
+user, token, refresh = signup(fixture_id)
+_, other, _ = signup(fixture_id + 1)
 
 # No real transcript or student information is read.
 image = Image.new('RGB', (1500, 500), 'white')
@@ -95,4 +96,6 @@ report = request(f'/api/analysis/report/?transcript_id={tid}', token=token)
 assert report['transcript_id'] == tid
 assert report['status'] == 'needs_verification'
 assert len(report['courses']) == 1
-print('PASS: signup, login, JWT refresh, async Korean image OCR + PDF, owner preview, foreign-owner denial, confirmation, graduation report, no-store, private media and proxy gate.')
+request('/api/users/logout/', {'refresh': refresh}, token=token)
+request('/api/users/refresh/', {'refresh': refresh}, expected=401)
+print('PASS: signup, login, JWT refresh/revocation, async Korean image OCR + PDF, owner preview, foreign-owner denial, confirmation, graduation report, no-store, private media and proxy gate.')

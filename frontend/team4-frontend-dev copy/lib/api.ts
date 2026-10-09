@@ -38,6 +38,19 @@ export function createApiClient(options: { baseUrl: string; storage: Store; fetc
     store.setItem(SESSION_GENERATION_KEY, crypto.randomUUID());
     SESSION_KEYS.forEach(key => store.removeItem(key)); options.onLogout?.();
   }
+  async function signOut() {
+    const access = store.getItem('accessToken');
+    const refreshToken = store.getItem('refreshToken');
+    logout();
+    if (!access || !refreshToken) return;
+    try {
+      await fetcher(options.baseUrl + '/api/users/logout/', {
+        method: 'POST', cache: 'no-store', signal: AbortSignal.timeout(15000),
+        headers: { Authorization: `Bearer ${access}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh: refreshToken }),
+      });
+    } catch { /* Local sign-out already completed even if the server is offline. */ }
+  }
   async function refresh() {
     if (refreshing && isCurrent(refreshing.session)) return refreshing.promise;
     const session = identity();
@@ -121,7 +134,7 @@ export function createApiClient(options: { baseUrl: string; storage: Store; fetc
       return profile;
     } catch (error) { if (isAttemptCurrent()) logout(); throw error; }
   }
-  return { request, login, logout, me };
+  return { request, login, logout, signOut, me };
 }
 let shared: ReturnType<typeof createApiClient> | undefined;
 export function api() {

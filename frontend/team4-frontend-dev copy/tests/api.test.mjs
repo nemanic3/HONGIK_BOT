@@ -8,6 +8,22 @@ function storage() {
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
 
+test('explicit sign-out clears identity immediately and revokes the captured refresh token', async () => {
+  const { createApiClient } = await import('../lib/api.ts');
+  const store = storage(); store.setItem('accessToken', 'old'); store.setItem('refreshToken', 'old-refresh');
+  const reply = deferred(); const calls = [];
+  const client = createApiClient({ baseUrl: 'http://api', storage: store, fetcher: (url, init) => { calls.push([url, init]); return reply.promise; } });
+  const pending = client.signOut();
+  assert.equal(store.getItem('accessToken'), null);
+  assert.equal(store.getItem('refreshToken'), null);
+  assert.equal(calls[0][0], 'http://api/api/users/logout/');
+  assert.equal(calls[0][1].headers.Authorization, 'Bearer old');
+  assert.deepEqual(JSON.parse(calls[0][1].body), { refresh: 'old-refresh' });
+  store.setItem('accessToken', 'new'); store.setItem('refreshToken', 'new-refresh');
+  reply.resolve(json({}, 401)); await pending;
+  assert.equal(store.getItem('accessToken'), 'new', 'late sign-out reply cannot clear a new login');
+});
+
 test('two clients sharing storage reject an old me response after another account logs in', async () => {
   const { createApiClient } = await import('../lib/api.ts');
   const store = storage(); store.setItem('accessToken', 'old');
