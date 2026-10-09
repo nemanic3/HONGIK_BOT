@@ -151,20 +151,24 @@ export default function MyPage() {
         </div>
       </div>
 
+      <main className={styles.content}>
       <CreditBar report={report} loading={loading} />
+      <div className={styles.detailGrid}>
       <NotTakenCard report={report} loading={loading} />
       <TakenCard report={report} loading={loading} />
-      <section aria-live="polite" style={{ marginLeft: "26rem", maxWidth: 940, padding: "24px 0" }}>
+      </div>
+      <section aria-live="polite" className={styles.reportStatus}>
         {error && <p role="alert">{error}</p>}
         {report && <>
           <p>{statusText[report.status]}</p>
           {report.policy && <p>기준 {report.policy.version} · {report.policy.major} · 입학 {report.policy.admission_year} · {report.policy.accreditation_track === 'accredited' ? '공학 인증' : '비인증'} · 출처 {report.policy.source_verified ? '검증됨' : '미검증'}</p>}
           {(report.warnings ?? []).map((warning, index) => <p key={index}>{warning}</p>)}
-          {report.status === 'needs_confirmation' && <button onClick={() => router.push(reviewHref(report.transcript_id))}>성적표 확인 / 수정</button>}
+          {report.transcript_id && <button onClick={() => router.push(reviewHref(report.transcript_id))}>성적표 확인 / 수정</button>}
         </>}
         <button onClick={() => setRefresh(value => value + 1)} disabled={loading}>분석 새로고침</button>{' '}
         <button onClick={() => setProfileOpen(true)} disabled={!profile}>프로필 설정</button>
       </section>
+      </main>
       {profileOpen && profile && <ProfileModal profile={profile} onClose={closeProfile} onSaved={value => { setProfile(value); setRefresh(count => count + 1); }} />}
     </div>
   );

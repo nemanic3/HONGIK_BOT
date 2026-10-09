@@ -98,7 +98,7 @@ export default function TakenCard({ report, loading = false }: { report: Analysi
               <div key={`${c.code}-${c.name}-${index}`} className={styles.row}>
                 <div className={styles.cell}>{c.code}</div>
                 <div className={styles.cell}>{c.type}</div>
-                <div className={styles.cellWide}>{c.name}</div>
+                <div className={styles.cellWide}>{c.name}{c.credit_counted === false && <small style={{ display: "block" }}>계산 제외 / 확인 필요</small>}</div>
                 <div className={styles.cellCenter}>{c.credit}</div>
                 <div className={styles.cellCenter}>{c.grade}</div>
               </div>

@@ -23,6 +23,12 @@ let handler = VNImageRequestHandler(url: URL(fileURLWithPath: CommandLine.argume
 try handler.perform([request])
 let text = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
     .joined(separator: "\n")
+let observations: [[String: Any]] = (request.results ?? []).compactMap { item in
+    guard let candidate = item.topCandidates(1).first else { return nil }
+    let box = item.boundingBox
+    return ["text": candidate.string, "x": box.minX, "y": 1 - box.maxY,
+            "width": box.width, "height": box.height, "confidence": candidate.confidence]
+}
 let unsupportedLanguages = requestedLanguages.filter { !supportedLanguages.contains($0) }
 let warnings: [[String: String]] = unsupportedLanguages.isEmpty ? [] : [[
     "code": "unsupported_recognition_language",
@@ -30,7 +36,7 @@ let warnings: [[String: String]] = unsupportedLanguages.isEmpty ? [] : [[
                "fallback uses \(selectedLanguages.joined(separator: ", "))."
 ]]
 let result: [String: Any] = [
-    "text": text, "provider": "apple_vision", "recognition_level": "accurate",
+    "observations": observations, "text": text, "provider": "apple_vision", "recognition_level": "accurate",
     "revision": request.revision, "requested_languages": requestedLanguages,
     "supported_languages": supportedLanguages, "recognition_languages": selectedLanguages,
     "unsupported_languages": unsupportedLanguages, "warnings": warnings

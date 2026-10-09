@@ -235,3 +235,21 @@ test('login fails closed when profile or tokens are invalid; identity only comes
   assert.equal((await valid.login('C123456', 'secret')).id, 42);
   assert.equal(store.getItem('userId'), '42');
 });
+
+
+test('slow OCR uploads override the ordinary deadline and still honor cancellation', async () => {
+  const { createApiClient } = await import('../lib/api.ts');
+  const store = storage(); store.setItem('accessToken', 'test');
+  let sent;
+  const client = createApiClient({ baseUrl: 'http://api', storage: store, timeoutMs: 5, fetcher: async (_, init) => {
+    sent = init;
+    await new Promise(resolve => setTimeout(resolve, 25));
+    return json({ transcript_id: 7 });
+  } });
+  assert.deepEqual(await client.request('/upload/', { timeoutMs: 200 }), { transcript_id: 7 });
+  assert.equal('timeoutMs' in sent, false);
+  const controller = new AbortController();
+  const pending = client.request('/upload/', { timeoutMs: 200, signal: controller.signal });
+  controller.abort(new Error('cancelled by user'));
+  await assert.rejects(pending, /cancelled by user/);
+});

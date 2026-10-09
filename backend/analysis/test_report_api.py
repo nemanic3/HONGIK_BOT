@@ -22,7 +22,7 @@ class ReportAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         rules = {row['id']: row for row in data['criteria']}
-        self.assertEqual(rules['areas']['status'], 'not_met')
+        self.assertEqual(rules['areas']['status'], 'needs_verification')
         self.assertEqual(rules['areas']['completed'], 6)
         self.assertEqual(rules['areas']['required'], 6)
         self.assertNotIn('제2외국어와 한문', rules['areas']['covered'])
@@ -43,7 +43,7 @@ class ReportAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         rules = {row['id']: row for row in data['criteria']}
-        self.assertEqual(rules['sw']['status'], 'not_met')
+        self.assertEqual(rules['sw']['status'], 'needs_verification')
         self.assertEqual(rules['sw']['completed'], 9)
         self.assertEqual(rules['sw']['required'], 9)
         self.assertEqual(rules['sw']['slots_filled'], 2)

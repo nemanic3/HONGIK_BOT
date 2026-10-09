@@ -135,3 +135,39 @@ class TranscriptAPITests(TestCase):
         latest = self.client.get(f'/api/transcripts/status/{self.user.id}/')
         self.assertEqual(latest.data['transcript_id'], tid)
         self.assertEqual(latest.data['source'], 'confirmed')
+
+class SourceAndRetryTests(TestCase):
+    setUp = TranscriptAPITests.setUp
+    upload = TranscriptAPITests.upload
+
+    def test_private_preview_checks_owner_and_does_not_expose_filename(self):
+        tid=self.upload().data['id']
+        url=f'/api/transcripts/source/{tid}/1/'
+        result=self.client.get(url)
+        self.assertEqual(result.status_code,200)
+        self.assertTrue(result.data['image'].startswith('data:image/jpeg;base64,'))
+        self.assertEqual(result['Cache-Control'],'private, no-store')
+        self.assertNotIn('synthetic-fixture',str(result.data))
+        self.assertEqual(self.client.get(url+'?page=999').status_code,400)
+        self.client.force_authenticate(self.other)
+        self.assertEqual(self.client.get(url).status_code,404)
+        self.assertEqual(self.client.post(f'/api/transcripts/retry/{tid}/').status_code,404)
+
+    @override_settings(TRANSCRIPT_PROCESSING='celery')
+    def test_retry_preserves_source_and_limits_attempts(self):
+        with patch('transcripts.tasks.process_transcript.delay',side_effect=ConnectionError):
+            original=self.upload().data['id']
+        old=Transcript.objects.get(pk=original)
+        with patch('transcripts.tasks.process_transcript.delay'):
+            retry=self.client.post(f'/api/transcripts/retry/{original}/')
+            self.assertEqual(retry.status_code,201)
+            new=Transcript.objects.get(pk=retry.data['id'])
+            self.assertEqual(new.pages.get().file.name,old.pages.get().file.name)
+            self.assertNotEqual(new.id,old.id)
+            active=self.client.post(f'/api/transcripts/retry/{original}/')
+            self.assertEqual(active.data['id'],new.id)
+            Transcript.objects.filter(pk=new.id).update(status='error')
+            again=self.client.post(f'/api/transcripts/retry/{original}/')
+            self.assertEqual(again.status_code,201)
+            self.assertEqual(self.client.post(f'/api/transcripts/retry/{original}/').status_code,429)
+        old.refresh_from_db();self.assertEqual(old.status,'error')

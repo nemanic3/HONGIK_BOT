@@ -31,8 +31,14 @@ def _resource(transcript, *, detail=False):
             'error_message': transcript.error_message, 'source': _source(transcript),
             'needs_review': transcript.confirmed_data is None}
     if detail:
-        data.update(ocr_raw_data=transcript.ocr_raw_data, document=transcript.get_course_document(),
-                    confirmed_at=transcript.confirmed_at)
+        raw = transcript.ocr_raw_data if isinstance(transcript.ocr_raw_data, dict) else {}
+        raw_pages = raw.get('pages', []) if isinstance(raw.get('pages', []), list) else []
+        from analysis.course_identity import identify_for_user
+        data.update(ocr_raw_data=transcript.ocr_raw_data, document=identify_for_user(transcript.get_course_document(), transcript.user),
+                    confirmed_at=transcript.confirmed_at,
+                    sources=[{'file_number': p.page_number, 'page_number': n}
+                             for p in transcript.pages.order_by('page_number')
+                             for n in (sorted({r.get('page_number',1) for r in raw_pages if isinstance(r,dict) and r.get('file_number')==p.page_number}) or [1])])
     return data
 
 
@@ -75,8 +81,8 @@ class TranscriptUploadView(APIView):
         # ✅ 여기서만 import (지연 임포트)
         try:
             from .tasks import process_transcript
-        except Exception as e:
-            return Response({"error": f"OCR 모듈 로드 실패: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception:
+            return Response({"error": "OCR 모듈을 불러오지 못했습니다."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         if 'files' not in request.data:
             return Response({"error": "파일이 전송되지 않았습니다."}, status=status.HTTP_400_BAD_REQUEST)
@@ -170,3 +176,71 @@ class TranscriptParsedView(APIView):
             # Raw text/table cells remain JSON values; they are never analysis inputs.
             data = transcript.ocr_raw_data if transcript.ocr_raw_data is not None else transcript.parsed_data
         return Response(data, status=status.HTTP_200_OK)
+
+
+class TranscriptSourceView(APIView):
+    """Owner-only, bounded preview. Never expose storage URLs or file names."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, transcript_id, file_number):
+        from io import BytesIO
+        import base64
+        import pymupdf
+        from PIL import Image, ImageOps
+        transcript = get_object_or_404(Transcript, pk=transcript_id, user=request.user)
+        source = get_object_or_404(transcript.pages, page_number=file_number)
+        try:
+            page_number=int(request.query_params.get('page','1'))
+            with source.file.open('rb') as f:
+                data=f.read()
+            if data.startswith(b'%PDF-'):
+                with pymupdf.open(stream=data,filetype='pdf') as pdf:
+                    if not 1 <= page_number <= len(pdf):
+                        return Response({'error':'Invalid page'},status=400)
+                    image=Image.open(BytesIO(pdf[page_number-1].get_pixmap(dpi=100).tobytes('png')))
+            else:
+                if page_number != 1: return Response({'error':'Invalid page'},status=400)
+                image=ImageOps.exif_transpose(Image.open(BytesIO(data)))
+            image.thumbnail((1600,1600))
+            output=BytesIO();image.convert('RGB').save(output,format='JPEG',quality=85)
+            response=Response({'image':'data:image/jpeg;base64,'+base64.b64encode(output.getvalue()).decode(),
+                               'file_number':file_number,'page_number':page_number})
+            response['Cache-Control']='private, no-store'
+            return response
+        except (ValueError,OSError,RuntimeError):
+            return Response({'error':'원본 미리보기를 생성하지 못했습니다.'},status=400)
+
+
+class TranscriptRetryView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, transcript_id):
+        from datetime import timedelta
+        from django.utils import timezone
+        from django.db import transaction
+        from django.conf import settings
+        from .models import TranscriptPage
+        from .tasks import process_transcript
+        with transaction.atomic():
+            old=get_object_or_404(Transcript.objects.select_for_update(),pk=transcript_id,user=request.user)
+            stale=old.status in ('pending','processing') and old.updated_at < timezone.now()-timedelta(minutes=15)
+            if old.confirmed_data is not None or (old.status!='error' and not stale):
+                return Response({'error':'실패했거나 15분 이상 멈춘 작업만 재시도할 수 있습니다.'},status=409)
+            sources=list(old.pages.order_by('page_number'))
+            if not sources: return Response({'error':'원본 파일이 없습니다.'},status=409)
+            related=Transcript.objects.filter(user=request.user,pages__file=sources[0].file.name,created_at__gte=timezone.now()-timedelta(hours=1)).distinct()
+            if related.count()>=3:
+                return Response({'error':'같은 파일은 한 시간에 최대 3회 처리할 수 있습니다.'},status=429)
+            active=related.filter(status__in=['pending','processing']).exclude(pk=old.pk).first()
+            if active: return Response(_resource(active),status=200)
+            new=Transcript.objects.create(user=request.user)
+            for s in sources:
+                TranscriptPage.objects.create(transcript=new,page_number=s.page_number,file=s.file.name)
+        # Preserve the failed resource and its raw extraction for comparison.
+        try:
+            if settings.TRANSCRIPT_PROCESSING=='inline': process_transcript.run(new.pk)
+            else: process_transcript.delay(new.pk)
+        except Exception:
+            Transcript.objects.filter(pk=new.pk,status='pending').update(status='error',error_message='작업 대기열에 연결하지 못했습니다.')
+        new.refresh_from_db()
+        return Response(_resource(new),status=201)

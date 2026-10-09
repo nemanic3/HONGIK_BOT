@@ -56,7 +56,8 @@ export function createApiClient(options: { baseUrl: string; storage: Store; fetc
     refreshing = { session, promise };
     return promise;
   }
-  async function request<T>(path: string, init: RequestInit = {}, authenticated = true, retry = true, accept?: (data: T) => void): Promise<T> {
+  async function request<T>(path: string, init: RequestInit & { timeoutMs?: number } = {}, authenticated = true, retry = true, accept?: (data: T) => void): Promise<T> {
+    const { timeoutMs, ...fetchInit } = init;
     const session = identity();
     const headers = new Headers(init.headers);
     if (authenticated) {
@@ -68,7 +69,7 @@ export function createApiClient(options: { baseUrl: string; storage: Store; fetc
     const cancel = () => controller.abort(init.signal?.reason ?? new DOMException('Cancelled', 'AbortError'));
     init.signal?.addEventListener('abort', cancel, { once: true });
     if (init.signal?.aborted) cancel();
-    const timer = setTimeout(() => controller.abort(new Error('서버 응답 시간이 초과되었습니다. 다시 시도해주세요.')), options.timeoutMs ?? 30000);
+    const timer = setTimeout(() => controller.abort(new Error('서버 응답 시간이 초과되었습니다. 다시 시도해주세요.')), timeoutMs ?? options.timeoutMs ?? 30000);
     let rejectAbort: () => void;
     const aborted = new Promise<never>((_, reject) => {
       rejectAbort = () => reject(controller.signal.reason);
@@ -78,7 +79,7 @@ export function createApiClient(options: { baseUrl: string; storage: Store; fetc
     let response: Response;
     let data: unknown;
     try {
-      response = await Promise.race([fetcher(options.baseUrl + path, { ...init, signal: controller.signal, headers, cache: 'no-store' }), aborted]);
+      response = await Promise.race([fetcher(options.baseUrl + path, { ...fetchInit, signal: controller.signal, headers, cache: 'no-store' }), aborted]);
       data = await Promise.race([response.json().catch(() => null), aborted]);
     } finally { clearTimeout(timer); init.signal?.removeEventListener('abort', cancel); controller.signal.removeEventListener('abort', rejectAbort!); }
     if (init.signal?.aborted) throw init.signal.reason;

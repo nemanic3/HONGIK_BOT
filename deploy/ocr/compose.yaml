@@ -1,0 +1,43 @@
+services:
+  redis:
+    image: redis:7-alpine
+    command: [redis-server, --appendonly, 'yes']
+    volumes: [queue-state:/data]
+    networks: [queue]
+  backend:
+    build:
+      context: ../..
+      dockerfile: deploy/ocr/Dockerfile
+    image: hongik-service-ocr:local
+    command: [python, manage.py, runserver, '0.0.0.0:8000', --noreload]
+    ports: ['127.0.0.1:8001:8000']
+    environment: &env
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set a local signing key}
+      DJANGO_DB_PATH: /state/db.sqlite3
+      DJANGO_MEDIA_ROOT: /state/media
+      TRANSCRIPT_PROCESSING: celery
+      TRANSCRIPT_IMAGE_OCR_PROVIDER: transcripts.paddle_provider.recognize_png
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    volumes: [service-state:/state]
+    networks: [queue, web]
+    depends_on: [redis]
+  worker:
+    image: hongik-service-ocr:local
+    command: [celery, -A, core, worker, --concurrency=1, --loglevel=WARNING, --without-gossip, --without-mingle, --without-heartbeat]
+    environment: *env
+    volumes: [service-state:/state, ocr-models:/root/.paddlex]
+    networks: [queue]
+    depends_on: [redis]
+    mem_limit: 4g
+    cpus: 4
+volumes:
+  service-state:
+  queue-state:
+  ocr-models:
+    external: true
+    name: hongik-ocr-models
+networks:
+  web:
+  queue:
+    internal: true

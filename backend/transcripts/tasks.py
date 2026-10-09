@@ -1,5 +1,6 @@
 """Transcript extraction tasks; structured drafts are never user confirmation."""
 from celery import shared_task
+from billiard.exceptions import SoftTimeLimitExceeded
 from .models import Transcript
 
 
@@ -13,9 +14,10 @@ def process_transcript(transcript_id: int):
         return None
     if transcript.confirmed_data is not None or transcript.ocr_raw_data is not None:
         return transcript.status
+    from django.utils import timezone
     claimed = Transcript.objects.filter(pk=transcript_id, confirmed_data__isnull=True,
                                         ocr_raw_data__isnull=True).exclude(status='processing').update(
-                                            status=Transcript.STATUS.processing)
+                                            status=Transcript.STATUS.processing, updated_at=timezone.now())
     if not claimed:
         transcript.refresh_from_db()
         return transcript.status
@@ -25,6 +27,8 @@ def process_transcript(transcript_id: int):
             try:
                 with source.file.open('rb') as file:
                     extracted = read_document(file)
+            except SoftTimeLimitExceeded:
+                raise
             except Exception:
                 message = 'Source extraction failed; original file preserved. Enter courses manually.'
                 extracted = {'pages': [{'page_number': 1, 'text': '', 'error': message, 'method': 'failed'}],
@@ -37,6 +41,8 @@ def process_transcript(transcript_id: int):
         except Exception:
             document = {'schema_version': 1, 'courses': [], 'needs_review': True, 'incomplete': True,
                         'warnings': [{'code': 'parser_failed', 'message': 'Parsing failed; review raw text and enter courses manually.'}]}
+        from analysis.course_identity import identify_for_user
+        document = identify_for_user(document, transcript.user)
         transcript.record_ocr_result(raw, courses=document)
         if not any(page.get('text', '').strip() for page in raw['pages']) and raw['warnings']:
             Transcript.objects.filter(pk=transcript_id, confirmed_data__isnull=True).update(

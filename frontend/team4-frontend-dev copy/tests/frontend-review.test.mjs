@@ -163,3 +163,48 @@ test('dashboard storage account switch aborts old reads, clears old state and re
     else delete globalThis.localStorage;
   }
 });
+
+
+test('empty unconfirmed OCR draft is visibly a parsing failure, never zero earned credits', () => {
+  const doc = { schema_version: 1, courses: [], incomplete: true };
+  const detail = { id: 42, status: 'done', document: doc, confirmed_at: null };
+  const harness = hookHarness([detail, doc, JSON.stringify(doc), false, '', false, false, 0]);
+  const Page = component('app/review/[id]/page.tsx', {
+    react: harness.hooks,
+    'next/navigation': { useParams: () => ({ id: '42' }), useRouter: () => ({ push() {} }) },
+    '../../../components/Header/Header': { __esModule: true, default: () => null },
+  });
+  assert.match(render(Page), /0학점을 의미하지 않습니다/);
+});
+
+test('review shows capture provenance and separate retake decisions, and preserves metadata on edit', () => {
+  const doc={schema_version:1,courses:[{code:'001009',name:'Synthetic',credit:3,type:'교필',grade:'A+',semester:'2030-1',retake_candidate:true,review_reasons:['성적 확인'],sources:[{file_number:1,page_number:1,bbox:[0,.2,.5,.1]}]}]};
+  const detail={id:42,status:'done',document:doc,sources:[{file_number:1}]};
+  const harness=hookHarness([detail,doc,JSON.stringify(doc),false,'',false,false,0]);
+  const Page=component('app/review/[id]/page.tsx',{react:harness.hooks,'next/navigation':{useParams:()=>({id:'42'}),useRouter:()=>({push(){}})},'../../../components/Header/Header':{__esModule:true,default:()=>null}});
+  const tree=Page();
+  const select=findElement(tree,e=>e.props?.['aria-label']==='1행 학점 인정');
+  select.props.onChange({target:{value:'exclude'}});
+  const updated=harness.updates.find(x=>x.index===1).next;
+  assert.equal(updated.courses[0].credit_decision,'exclude');
+  assert.deepEqual(updated.courses[0].sources,doc.courses[0].sources);
+  assert.ok(findElement(tree,e=>e.type==='button' && Array.isArray(e.props.children) && e.props.children[0]==='원본 '));
+});
+
+
+test('review shows course history uncertainty alongside original fields and source evidence', () => {
+  const doc = { schema_version: 1, courses: [{ code: '001001', name: 'Observed name', credit: 3, grade: 'A0', type: '전필', semester: '2021-1',
+    identification: { status: 'needs_review', issues: ['과목명 불일치'], candidates: [{ name: 'Catalog name', evidence: { pdf_page: 98 } }] } }] };
+  const detail = { id: 42, status: 'done', document: doc };
+  const harness = hookHarness([detail, doc, JSON.stringify(doc), false, '', false, false, 0]);
+  const Page = component('app/review/[id]/page.tsx', {
+    react: harness.hooks,
+    'next/navigation': { useParams: () => ({ id: '42' }), useRouter: () => ({ push() {} }) },
+    '../../../components/Header/Header': { __esModule: true, default: () => null },
+  });
+  const html = render(Page);
+  assert.match(html, /과목명 불일치/);
+  assert.match(html, /Observed name/);
+  assert.match(html, /Catalog name/);
+  assert.match(html, /공식 과목 변경 관계가 생성되지는 않습니다/);
+});

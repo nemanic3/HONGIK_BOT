@@ -11,7 +11,7 @@ export default function CreditBar({ report, loading = false }: { report: Analysi
   return <div className={styles.box}>
     <p className={styles.title}>졸업 요건 이수 현황</p>
     {criteria.length === 0 && <p>{loading ? "불러오는 중…" : "졸업 요건 정보가 아직 없습니다."}</p>}
-    <div style={{ display: "flex", gap: 15, overflowX: "auto", marginLeft: -350, marginTop: 50, paddingBottom: 6 }}>
+    <div className={styles.cards}>
       {criteria.map((criterion, index) => <div key={criterion.id} className={index === 0 ? styles.total : styles.major} style={{ margin: 0, height: "auto", minHeight: 85, flexShrink: 0 }}>
         {index === 0 && <Image src="/Group.svg" alt="" width={15} height={15} className={styles.icon} />}
         <p className={index === 0 ? styles.tcredit : styles.mcredit} style={{ width: "auto", margin: 0 }}>{criterion.label}</p>

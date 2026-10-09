@@ -16,7 +16,7 @@ export default function NotTakenCard({ report, loading = false }: { report: Anal
         <h2 className={styles.title}><img src="/alert-triangle.svg" alt="경고" className={styles.icon} />미수강 과목</h2>
         <p className={styles.subtitle}>미충족 항목과 검증이 필요한 기준 확인</p>
       </div>
-      <div className={styles.filterChips} style={{ maxWidth: 190, overflowX: "auto" }}>
+      <div className={styles.filterChips}>
         <button className={`${styles.chip} ${!active ? styles.chipActive : ""}`} onClick={() => setActive("")}>전체</button>
         {criteria.map(criterion => <button key={criterion.id} className={`${styles.chip} ${active === criterion.id ? styles.chipActive : ""}`} onClick={() => setActive(criterion.id)}>{criterion.label}</button>)}
       </div>

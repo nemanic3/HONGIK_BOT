@@ -98,7 +98,7 @@ export default function UploadPage() {
         <div className={styles.textbox}>
           <div className={styles.title}>성적표를 업로드 해 주세요.</div>
           <div className={styles.subtitle}>
-            합계 5MiB 이하의 PDF/PNG/JPG 파일을 여러 개 선택하거나 드래그&드롭으로 추가할 수 있어요.
+            졸업요건 조회의 과목 표를 학기 제목·머리글이 보이도록 캡처해주세요. 긴 화면은 일부가 겹치도록 나눠 찍어도 됩니다. 합계 5MiB 이하의 PDF/PNG/JPG 파일을 최대 5개 선택하거나 드래그&드롭으로 추가할 수 있어요.
           </div>
           {message && <div className={styles.notice} aria-live="polite">{message}</div>}
         </div>

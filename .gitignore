@@ -15,3 +15,5 @@ backend/media/
 .env
 .env.*
 !.env.example
+.next-service-check/
+.next-service-build/

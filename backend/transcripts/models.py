@@ -118,7 +118,8 @@ class Transcript(models.Model):
             stored = type(self).objects.select_for_update().get(pk=self.pk)
             if confirmed_by.pk != stored.user_id:
                 raise ValidationError("성적표 소유자만 데이터를 확정할 수 있습니다.")
-            stored.confirmed_data = document
+            from analysis.course_identity import identify_for_user
+            stored.confirmed_data = identify_for_user(document, stored.user)
             stored.confirmed_by = confirmed_by
             stored.confirmed_at = timezone.now()
             stored.status = self.STATUS.done

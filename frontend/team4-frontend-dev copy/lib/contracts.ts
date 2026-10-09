@@ -27,9 +27,10 @@ export function parseDocument(raw: string, forConfirmation = false): CourseDocum
     for (const key of ['name', 'type', 'grade']) if (typeof course[key] !== 'string') throw new Error(`${key}는 문자열이어야 합니다.`);
     if (course.semester !== null && typeof course.semester !== 'string') throw new Error('semester는 문자열 또는 null이어야 합니다.');
     if (course.credit !== null && (typeof course.credit !== 'number' || !Number.isFinite(course.credit) || course.credit < 0)) throw new Error('학점은 0 이상의 숫자 또는 null이어야 합니다.');
+    if (course.credit_decision && !['unresolved', 'include', 'exclude'].includes(course.credit_decision)) throw new Error('학점 인정 선택이 올바르지 않습니다.');
     if (forConfirmation) {
-      for (const key of ['name', 'type', 'grade', 'semester']) if (typeof course[key] !== 'string' || !course[key].trim()) throw new Error(`${index + 1}행: 확정하려면 ${key}가 필요합니다.`);
-      if (course.credit === null) throw new Error(`${index + 1}행: 확정하려면 학점이 필요합니다.`);
+      for (const key of (course.credit_decision === 'exclude' ? ['name', 'semester'] : ['name', 'type', 'grade', 'semester'])) if (typeof course[key] !== 'string' || !course[key].trim()) throw new Error(`${index + 1}행: 확정하려면 ${key}가 필요합니다.`);
+      if (course.credit === null && course.credit_decision !== 'exclude') throw new Error(`${index + 1}행: 확정하려면 학점이 필요합니다.`);
     }
   }
   return doc;
@@ -37,7 +38,19 @@ export function parseDocument(raw: string, forConfirmation = false): CourseDocum
 export function editCourse(doc: CourseDocument, index: number, field: string, text: string): CourseDocument {
   if (field === 'credit' && text.trim() !== '' && (!Number.isFinite(Number(text)) || Number(text) < 0)) throw new Error('학점은 0 이상의 숫자여야 합니다.');
   const value = field === 'credit' ? (text.trim() === '' ? null : Number(text)) : field === 'semester' && !text.trim() ? null : text;
-  return { ...doc, courses: doc.courses.map((course, i) => i === index ? { ...course, [field]: value } : course) };
+  return { ...doc, courses: doc.courses.map((course, i) => {
+    if (i !== index) return course;
+    const edited = { ...course, [field]: value };
+    if (course.identification && ['code', 'name', 'credit', 'type', 'semester'].includes(field)) {
+      edited.identification = { status: 'needs_review', issues: ['수정한 과목 정보는 확정 시 다시 대조합니다.'], candidates: [], course_id: null, version_id: null };
+    }
+    if (field === 'semester') {
+      const term = /^(\d{4})-(1|2|summer|winter)$/.exec(text);
+      if ('academic_year' in course) edited.academic_year = term ? Number(term[1]) : null;
+      if ('term' in course) edited.term = term ? term[2] : null;
+    }
+    return edited;
+  }) };
 }
 
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
@@ -55,6 +68,7 @@ export function uploadResult(status: number, data: unknown): { transcript_id: st
 }
 
 export function validateUploads(files: ReadonlyArray<{ name: string; size: number }>): void {
+  if (files.length > 5) throw new Error('한 번에 최대 5개 파일을 선택해주세요.');
   if (!files.length) throw new Error('업로드할 파일을 선택해주세요.');
   if (files.some(file => !/\.(pdf|png|jpe?g)$/i.test(file.name))) throw new Error('지원하지 않는 파일 형식입니다. (PDF/PNG/JPG)');
   if (files.some(file => !Number.isFinite(file.size) || file.size < 0) || files.reduce((sum, file) => sum + file.size, 0) > MAX_UPLOAD_BYTES) throw new Error('파일 합계가 5MiB를 초과합니다.');

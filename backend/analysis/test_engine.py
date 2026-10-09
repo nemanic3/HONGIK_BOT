@@ -127,11 +127,12 @@ class EngineTests(SimpleTestCase):
         with self.assertRaises(ValidationError):
             evaluate_rules(policy([],[]),{'courses':[]})
 
-    def test_repeated_same_alias_is_one_identity_not_ambiguous(self):
+    def test_name_only_alias_cannot_establish_identity(self):
         rule={'id':'course','kind':'course_groups','groups':[['001009']]}
         row={'code':'001009','name':'영어','aliases':['영어']}
         result=evaluate_rules(policy([rule],[row]),{'courses':[dict(course('',3),name='영어')]})
-        self.assertEqual(result['criteria'][0]['status'],'met')
+        self.assertEqual(result['criteria'][0]['status'],'needs_verification')
+        self.assertEqual(result['criteria'][0]['completed'],0)
 
     def test_unmatched_course_makes_absence_uncertain(self):
         rule={'id':'course','kind':'course_groups','groups':[['001009']]}

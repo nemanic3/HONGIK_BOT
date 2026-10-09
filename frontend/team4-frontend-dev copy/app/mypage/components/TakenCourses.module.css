@@ -5,8 +5,8 @@
   align-items: stretch;
   align-self: stretch;
 
-  width: 460px;                 /* 카드와 동일 */
-  height: 350px;                /* 카드와 동일 */
+  width: 100%;                 /* 카드와 동일 */
+  height: 450px;                /* 카드와 동일 */
 
   padding: 15px 30px;
   gap: 12px;
@@ -15,8 +15,8 @@
   border: 1.125px solid #0381fe;  /* 카드와 동일 */
   border-radius: 18.75px;         /* 카드와 동일 */
 
-  margin-top: -21.9rem;
-  margin-left: 56rem;
+  margin: 0;
+  min-width: 0;
 
   box-sizing: border-box;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -103,10 +103,11 @@
 .active { background: #eef2ff; font-weight: 600; }
 
 /* ===== 표 영역 ===== */
-.statusbox { width: 100%; }
+.statusbox { width: 100%; overflow: auto; }
 
 .headerRow {
   display: grid;
+  min-width: 370px;
   grid-template-columns: 60px 80px 1fr 40px 48px;
   gap: 8px;
   padding: 6px 12px;
@@ -119,6 +120,7 @@
 
 .row {
   display: grid;
+  min-width: 370px;
   grid-template-columns: 60px 80px 1fr 40px 48px;
   gap: 8px;
   padding: 7px 12px;

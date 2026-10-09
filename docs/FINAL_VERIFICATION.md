@@ -1,3 +1,5 @@
+> 2026-10-09 후속 검증: 캡처 기반 다중 OCR 서비스의 최신 구현·실행 결과는 [SCREENSHOT_SERVICE_VERIFICATION.md](SCREENSHOT_SERVICE_VERIFICATION.md)를 참고하세요. 아래 내용은 이전 단계의 기록입니다.
+
 # 최종 검증 기록
 
 ## 범위와 원본 보존
@@ -101,3 +103,5 @@ DB/성적표 이미지/환경파일/비밀번호·API키/캐시/가상환경/IDE
 프론트·백엔드 독립 재리뷰 모두 **passed=true**, 보안/논리 blocker 없음으로 승인됐다. 독립 백엔드 전체112개 테스트와 프론트34개 테스트·타입 검사도 통과했다. 선택형 OCR 어댑터의 별도 독립 리뷰도 통과했다. 최종 승인 범위는 코드·격리 검증이며 위에 명시한 원본 DB 미적용·공식 기준 검증·운영 배포 한계는 그대로다.
 
 commit 직전 선택한 변경 파일과 staged diff, 민감정보 제외, 원격 브랜치·원본 DB 해시를 다시 검사한다. 실제 커밋 해시와 push 결과는 Git 기록 및 사용자 완료 보고에서 확인한다.
+
+과목 식별·변경 이력 최신 검증(2026-10-10): [COURSE_IDENTITY_VERIFICATION.md](COURSE_IDENTITY_VERIFICATION.md).

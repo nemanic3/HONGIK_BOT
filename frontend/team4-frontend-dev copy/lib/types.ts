@@ -32,6 +32,7 @@ export interface TranscriptDetail {
   status: string;
   error_message?: string;
   source?: unknown;
+  sources?: { file_number: number; page_number?: number }[];
   ocr_raw_data?: unknown;
   document?: CourseDocument | null;
   confirmed_at?: string | null;

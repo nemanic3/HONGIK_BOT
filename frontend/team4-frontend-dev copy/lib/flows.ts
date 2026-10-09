@@ -30,7 +30,7 @@ export async function uploadTranscript(client: Client, files: File[], signal?: A
   const form = new FormData();
   files.forEach(file => form.append('files', file, file.name));
   try {
-    const result = await client.request(`/api/transcripts/${requireId(user.id)}/`, { method: 'POST', body: form, signal });
+    const result = await client.request(`/api/transcripts/${requireId(user.id)}/`, { method: 'POST', body: form, signal, timeoutMs: 600000 });
     return uploadResult(201, result);
   } catch (error) {
     if (error instanceof ApiError && error.status === 503) return uploadResult(503, error.data);

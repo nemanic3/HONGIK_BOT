@@ -101,11 +101,16 @@ def normalize_course(value, *, for_confirmation=False):
     result.setdefault("term", None)
     if result["term"] is not None and not isinstance(result["term"], str):
         raise CourseSchemaError("term은 문자열 또는 null이어야 합니다.")
+    decision = result.get('credit_decision', 'unresolved')
+    if decision not in ('unresolved', 'include', 'exclude'):
+        raise CourseSchemaError('학점 인정 선택이 올바르지 않습니다.')
+    if 'semester_retake' in result and not isinstance(result['semester_retake'], bool):
+        raise CourseSchemaError('semester_retake는 boolean이어야 합니다.')
     if for_confirmation:
-        for field in ("name", "grade", "semester", "type"):
+        for field in (("name", "semester") if decision == "exclude" else ("name", "grade", "semester", "type")):
             if not isinstance(result[field], str) or not result[field].strip():
                 raise CourseSchemaError(f"확정하려면 {field}가 필요합니다.")
-        if result["credit"] is None:
+        if result["credit"] is None and decision != "exclude":
             raise CourseSchemaError("확정하려면 credit가 필요합니다.")
     return result
 

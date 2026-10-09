@@ -79,6 +79,24 @@ def validate_policy_data(data):
         level = row.get('sw_level')
         if level is not None and (type(level) is not int or level not in (1, 2, 3)):
             raise ValidationError('sw_level: 1·2·3 또는 null이어야 합니다.')
+    relations = data.get('course_relations', [])
+    if not isinstance(relations, list):
+        raise ValidationError('course_relations는 배열이어야 합니다.')
+    linked = set()
+    for relation in relations:
+        if not isinstance(relation, dict) or relation.get('kind') not in ('same_course', 'replacement'):
+            raise ValidationError('동일과목과 대체과목 관계를 구분해야 합니다.')
+        if 'official_verified' in relation and type(relation['official_verified']) is not bool:
+            raise ValidationError('official_verified는 명시적 불리언이어야 합니다.')
+        _sources(relation)
+        _text(relation.get('source_document'), 'source_document')
+        _text(relation.get('from_code'), 'from_code')
+        _text(relation.get('to_code'), 'to_code')
+        if relation['from_code'] == relation['to_code'] or relation['to_code'] not in codes or relation['from_code'] in linked:
+            raise ValidationError('과목 관계가 중복되거나 대상이 불명확합니다.')
+        linked.add(relation['from_code'])
+    if any(r['to_code'] in linked for r in relations):
+        raise ValidationError('연쇄 관계는 최종 동일과목으로 정규화해야 합니다.')
     ids = set()
     for rule in rules:
         if not isinstance(rule, dict):

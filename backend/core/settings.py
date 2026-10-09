@@ -11,7 +11,7 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY') or get_random_secret_key()
 DEBUG = os.environ.get('DJANGO_DEBUG', '1') == '1'
 if not DEBUG and not os.environ.get('DJANGO_SECRET_KEY'):
     raise ImproperlyConfigured('DJANGO_SECRET_KEY is required when DJANGO_DEBUG=0')
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,backend').split(',')
 
 INSTALLED_APPS = [
     # Django 기본
@@ -68,7 +68,7 @@ ASGI_APPLICATION = 'core.asgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': os.environ.get('DJANGO_DB_PATH', str(BASE_DIR / 'db.sqlite3')),
     }
 }
 
@@ -91,7 +91,7 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = Path(os.environ.get('DJANGO_MEDIA_ROOT', str(BASE_DIR / 'media')))
 
 # DRF + JWT(auth class만 등록)
 REST_FRAMEWORK = {
@@ -104,7 +104,8 @@ REST_FRAMEWORK = {
 AUTH_USER_MODEL = 'users.User'
 
 # CORS (개발 편의)
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = DEBUG
+CORS_ALLOWED_ORIGINS = [v for v in os.environ.get('DJANGO_CORS_ORIGINS', 'http://127.0.0.1:3000,http://127.0.0.1:3001').split(',') if v]
 
 # Celery — Redis 브로커/결과 백엔드 사용(권장)
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
@@ -121,3 +122,10 @@ TRANSCRIPT_PROCESSING = os.environ.get('TRANSCRIPT_PROCESSING', 'celery')
 TRANSCRIPT_IMAGE_OCR_PROVIDER = os.environ.get('TRANSCRIPT_IMAGE_OCR_PROVIDER', '')
 CELERY_TASK_PUBLISH_RETRY = False
 CELERY_BROKER_CONNECTION_TIMEOUT = 2
+
+# Bound worker resource use; a soft timeout is recorded as a recoverable error.
+CELERY_TASK_SOFT_TIME_LIMIT = 600
+CELERY_TASK_TIME_LIMIT = 660
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_TASK_SEND_SENT_EVENT = False

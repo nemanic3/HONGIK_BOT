@@ -4,10 +4,14 @@ from .views import (
     TranscriptStatusView,
     TranscriptParsedView,
     TranscriptDetailView,
+    TranscriptSourceView,
+    TranscriptRetryView,
     TranscriptConfirmView,
 )
 
 urlpatterns = [
+    path('source/<int:transcript_id>/<int:file_number>/', TranscriptSourceView.as_view()),
+    path('retry/<int:transcript_id>/', TranscriptRetryView.as_view()),
     path('detail/<int:transcript_id>/', TranscriptDetailView.as_view(), name='transcript-detail'),
     path('confirm/<int:transcript_id>/', TranscriptConfirmView.as_view(), name='transcript-confirm'),
     # 1) POST   /api/transcripts/{user_id}/      -> 업로드

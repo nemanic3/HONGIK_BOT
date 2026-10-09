@@ -1,0 +1,11 @@
+.git
+.backups
+**/.venv
+**/node_modules
+**/.next
+**/__pycache__
+**/*.sqlite3
+**/media
+**/.env*
+*.pdf
+tools

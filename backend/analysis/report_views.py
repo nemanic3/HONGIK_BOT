@@ -34,7 +34,8 @@ class GraduationReportView(APIView):
         if policy is None:
             return Response({**base,'status':'policy_unavailable','warnings':['이 학과·입학연도·인증과정의 기준이 없거나 중복 버전이 있습니다. 검증 필요.']})
         try:
-            result=evaluate_rules(policy,transcript.confirmed_data)
+            from .course_identity import catalog_snapshot
+            result=evaluate_rules(policy,transcript.confirmed_data, course_catalog=catalog_snapshot(user.major))
         except ValidationError:
             return Response({**base,'status':'policy_unavailable','warnings':['졸업 기준 문서 검증에 실패했습니다. 새 버전의 기준을 확인하세요.']})
         except CourseSchemaError:

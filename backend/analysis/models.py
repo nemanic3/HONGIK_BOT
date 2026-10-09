@@ -154,3 +154,102 @@ class RequirementRuleSet(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
+
+
+# Course history is additive. Transcript JSON remains the original student record.
+import uuid
+from django.core.validators import MinValueValidator, RegexValidator
+
+
+class CourseIdentity(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class CourseEvidence(models.Model):
+    def __str__(self):
+        return f'{self.document} p.{self.pdf_page}'
+
+    document = models.TextField()
+    sha256 = models.CharField(max_length=64, validators=[RegexValidator(r'^[0-9a-f]{64}$')])
+    pdf_page = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    printed_page = models.CharField(max_length=40)
+    statement = models.TextField(help_text='Exact applicable statement, not an inferred code mapping')
+    official_verified = models.BooleanField(default=False)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    verified_by = models.CharField(max_length=120, blank=True)
+
+    def clean(self):
+        if self.official_verified and (not self.verified_at or not self.verified_by.strip()):
+            raise ValidationError('Official verification requires reviewer and time.')
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+
+class CourseVersion(models.Model):
+    """One exact calendar term. No extrapolation into unrecorded years/terms."""
+    course = models.ForeignKey(CourseIdentity, on_delete=models.PROTECT, related_name='versions')
+    campus = models.CharField(max_length=20, default='서울')
+    major = models.CharField(max_length=100, default='컴퓨터공학과')
+    academic_year = models.PositiveSmallIntegerField(validators=[MinValueValidator(1900)])
+    term = models.CharField(max_length=10, choices=[('1','1'),('2','2'),('summer','summer'),('winter','winter')])
+    code = models.CharField(max_length=40)
+    name = models.CharField(max_length=200)
+    credit = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
+    classification = models.CharField(max_length=80, blank=True)
+    evidence = models.ForeignKey(CourseEvidence, on_delete=models.PROTECT)
+
+    def __str__(self):
+        return f'{self.academic_year}-{self.term} {self.code} {self.name}'
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['course','campus','major','academic_year','term'], name='course_exact_term_version')]
+        indexes = [models.Index(fields=['campus','major','code','academic_year','term'], name='course_code_term_lookup')]
+
+    def clean(self):
+        if self.pk:
+            original = type(self).objects.filter(pk=self.pk).values().first()
+            if original and any(original[f.attname] != getattr(self, f.attname) for f in self._meta.concrete_fields):
+                raise ValidationError('Published course versions are immutable.')
+        # Sharing an identity itself asserts sameness, so changes require explicit
+        # verified relations between separate identities instead of silent reuse.
+        if self.course_id:
+            others = type(self).objects.filter(course_id=self.course_id).exclude(pk=self.pk)
+            if any(any(getattr(v,k) != getattr(self,k) for k in ('code','name','credit','classification','campus','major')) for v in others):
+                raise ValidationError('Changed attributes require a separate identity and evidenced same_course relation.')
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+
+class CourseRelation(models.Model):
+    # Direction: an attended source version can satisfy the target requirement.
+    source = models.ForeignKey(CourseVersion, on_delete=models.PROTECT, related_name='outgoing_relations')
+    target = models.ForeignKey(CourseVersion, on_delete=models.PROTECT, related_name='incoming_relations')
+    kind = models.CharField(max_length=20, choices=[('same_course','동일과목'),('replacement','대체과목'),('retake','재수강 허용')])
+    evidence = models.ForeignKey(CourseEvidence, on_delete=models.PROTECT)
+    policy_version = models.CharField(max_length=80, blank=True)
+    criterion_id = models.CharField(max_length=80, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['source','target','kind','policy_version','criterion_id'], name='unique_course_relation_scope')]
+
+    def clean(self):
+        if self.source_id and self.target_id:
+            if self.source_id == self.target_id:
+                raise ValidationError('Relation endpoints must differ.')
+            if (self.source.campus, self.source.major) != (self.target.campus, self.target.major):
+                raise ValidationError('Cross-program equivalence requires a separate policy.')
+            if self.kind != 'same_course' and self.source.course_id == self.target.course_id:
+                raise ValidationError('Replacement/retake must not imply shared identity.')
+        if self.kind == 'replacement' and (not self.policy_version or not self.criterion_id):
+            raise ValidationError('Replacement requires exact policy version and criterion.')
+        if self.kind != 'replacement' and (self.policy_version or self.criterion_id):
+            raise ValidationError('Only replacement relations carry requirement scope.')
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)

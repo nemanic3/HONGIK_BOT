@@ -35,7 +35,7 @@ test('incomplete OCR draft null credit and semester can be parsed and corrected 
   assert.deepEqual(draft, raw);
   const credit = editCourse(draft, 0, 'credit', '1.5');
   const completed = editCourse(credit, 0, 'semester', '2024-1');
-  assert.deepEqual(completed, { ...raw, courses: [{ ...raw.courses[0], credit: 1.5, semester: '2024-1' }] });
+  assert.deepEqual(completed, { ...raw, courses: [{ ...raw.courses[0], credit: 1.5, semester: '2024-1', academic_year: 2024, term: '1' }] });
   assert.equal(editCourse(completed, 0, 'credit', '').courses[0].credit, null, 'blank edit stays unknown, never silently zero');
   assert.equal(editCourse(completed, 0, 'semester', '').courses[0].semester, null);
   assert.equal(draft.courses[0].credit, null);
@@ -57,4 +57,26 @@ test('uploads enforce the combined five MiB limit, not only each file', async ()
   assert.doesNotThrow(() => validateUploads([{ name: 'a.pdf', size: 5 * 1024 * 1024 }]));
   assert.throws(() => validateUploads([]), /파일/);
   assert.throws(() => validateUploads([{ name: 'a.exe', size: 1 }]), /형식/);
+});
+
+test('excluded historical rows retain missing grade and credit without inventing values', async () => {
+  const { parseDocument } = await import('../lib/contracts.ts');
+  const doc = {schema_version:1,courses:[{code:'001009',name:'Historic',credit:null,type:'',grade:'',semester:'2030-1',credit_decision:'exclude'}]};
+  assert.equal(parseDocument(JSON.stringify(doc),true).courses[0].grade,'');
+  doc.courses[0].credit_decision='include';
+  assert.throws(() => parseDocument(JSON.stringify(doc),true));
+});
+
+
+test('editing course identity fields invalidates stale matches and synchronizes actual semester', async () => {
+  const { editCourse } = await contracts();
+  const doc = { schema_version: 1, courses: [{ code: '001001', name: 'Fixture', credit: 3, type: '전필', grade: 'A0', semester: '2021-1', academic_year: 2021, term: '1',
+    identification: { status: 'matched', version_id: 9, course_id: 'old' }, sources: [{ file_number: 1 }] }] };
+  const next = editCourse(doc, 0, 'semester', '2024-2');
+  assert.equal(next.courses[0].identification.status, 'needs_review');
+  assert.equal(next.courses[0].identification.version_id, null);
+  assert.equal(next.courses[0].academic_year, 2024);
+  assert.equal(next.courses[0].term, '2');
+  assert.deepEqual(next.courses[0].sources, doc.courses[0].sources);
+  assert.equal(doc.courses[0].semester, '2021-1');
 });
