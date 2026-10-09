@@ -13,11 +13,13 @@
 
 ## Mac mini 운영 백엔드
 
-사용자가 유료 서버를 거절하고 기존 Mac mini 사용을 선택했다. 새 운영 PostgreSQL/Redis/Django/Celery를 Docker로 실행하고 전용 Cloudflare Tunnel `hongikbot-macmini`를 생성했다. `hongikbot-origin.nemanic.dev`는 `http://api:8000`에만 연결된다. 운영 Pages에 `API_ORIGIN=https://hongikbot-origin.nemanic.dev`와 암호화 `HONGIK_PROXY_SECRET`을 설정했다. 실제 사용자 도메인에서 가상 계정 회원가입과 로그인 성공을 확인했다. 실제 HTTPS 파일 업로드 검증은 Chrome 파일 접근 설정 이후 진행한다.
+사용자가 유료 서버를 거절하고 기존 Mac mini 사용을 선택했다. 새 운영 PostgreSQL/Redis/Django/Celery를 Docker로 실행하고 전용 Cloudflare Tunnel `hongikbot-macmini`를 생성했다. `hongikbot-origin.nemanic.dev`는 `http://api:8000`에만 연결된다. 운영 Pages에 `API_ORIGIN=https://hongikbot-origin.nemanic.dev`와 암호화 `HONGIK_PROXY_SECRET`을 설정했다. 실제 사용자 도메인에서 가상 계정 회원가입과 로그인 성공을 확인했다.
 
 Mac 전용 운영 체크아웃은 `~/Library/Application Support/HongikBot/repository`에 있다. 개발 데이터는 복사하지 않았다. LaunchAgent `dev.nemanic.hongikbot`가 5분마다 GitHub master push 검증 성공 커밋을 자동 배포한다. 첫 자동 배포 `c07113d`의 마이그레이션, 운영 보안 검사, 모델 준비, 컨테이너 정상 상태를 확인했다. SSH 배포 workflow는 비활성으로 유지한다.
 
-운영 컨테이너 내부에서도 별도의 합성 계정 두 개로 이미지/PDF 비동기 OCR, 원본 미리보기, 타 계정 접근 거부, 확정, 보고서, 토큰 갱신/폐기, private/no-store, 미디어 차단, 프록시 인증 검증을 모두 통과했다. 공개 HTTPS에서 파일 업로드 전체 흐름은 아직 별도 검증 대상이다. 명령행 HTTPS 요청은 Cloudflare 오류 1010으로 차단되며 보안 설정을 낮추지 않았다. 브라우저 회원가입/로그인은 정상이다.
+운영 컨테이너 내부에서도 별도의 합성 계정 두 개로 이미지/PDF 비동기 OCR, 원본 미리보기, 타 계정 접근 거부, 확정, 보고서, 토큰 갱신/폐기, private/no-store, 미디어 차단, 프록시 인증 검증을 모두 통과했다. 명령행 HTTPS 요청은 Cloudflare 오류 1010으로 차단되며 보안 설정을 낮추지 않았다.
+
+사용자가 Chrome 파일 접근을 허용한 뒤 공개 HTTPS 브라우저 검증을 완료했다: 가짜 한국어 PNG와 텍스트 PDF 동시 업로드, 비동기 OCR done, PDF 원본 미리보기, OCR 성적 AO를 A0로 수정, 인정 선택, 확정 저장, 대시보드에 가상과목 3학점/A0 및 졸업 보고서 표시, 로그아웃. 모든 검증 계정과 업로드 원본은 종료 후 정리했다. 실제 성적표 및 개인정보를 테스트에 사용하지 않았다. 기존 제공 기준은 초안/출처 미검증 상태이며 보고서의 '검증 필요' 경고를 유지한다.
 
 ## 거절된 서버 비용 제안 (구매하지 않음)
 
