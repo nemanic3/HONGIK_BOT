@@ -44,6 +44,8 @@ Pages 환경 변수:
 
 ## 서버 준비
 
+2026-10-10 운영 호스트 선택: 사용자 Mac mini의 Docker Desktop (Linux ARM64). 유료 서버는 구매하지 않는다. `hongikbot` 운영 Compose 프로젝트는 개발 SQLite 및 `hongikbot-deploy-check` 테스트 볼륨과 분리한다. Mac 또는 Docker가 종료되면 백엔드가 중단된다. 현재 Mac의 시스템 절전은 꺼져 있으며 Docker에 약 8 GB 메모리가 할당되어 있다. Docker Desktop 로그인 시 자동 시작과 운영 배포 자동 갱신은 별도로 확인한다.
+
 기존 Linux 서버가 있으면 추가 호스팅 구매 없이 사용 가능하다. 최소 시작 권장 사양은 2 vCPU / RAM 8 GiB / SSD 40 GiB이며 CPU OCR 처리량·업로드 보관량에 따라 조정한다. 유료 서버 생성은 비용 승인 후 진행한다. 로컬 Mac을 지속적으로 노출하는 배포는 기본 구성으로 사용하지 않는다.
 
 1. 전용 `/opt/hongikbot` 디렉터리와 제한된 배포 계정을 준비한다. SSH 호스트 키를 검증하고 Docker Compose를 설치한다.
@@ -57,6 +59,8 @@ Pages 환경 변수:
 서버 변수는 Compose에 명시되어 있다: `DJANGO_DEBUG`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CORS_ORIGINS`, `DJANGO_CSRF_ORIGINS`, `DJANGO_DB_ENGINE`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_PORT`, `DJANGO_MEDIA_ROOT`, `DJANGO_REQUIRE_PROXY_SECRET`, `HONGIK_PROXY_SECRET`, `TRANSCRIPT_PROCESSING`, `TRANSCRIPT_IMAGE_OCR_PROVIDER`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`. 선택 OCR 설정: `OCR_CPU_THREADS`.
 
 ## GitHub 자동 배포
+
+Mac mini에서는 SSH 배포 workflow를 활성화하지 않는다. 사용자 LaunchAgent `dev.nemanic.hongikbot`가 5분마다 master의 최신 커밋과 GitHub `Verify deployment` push 검사 성공을 확인한다. 성공한 커밋만 `.production-runtime/releases/<SHA>`에 Git archive로 배치한 뒤 기존 운영 볼륨을 사용하는 release 스크립트를 실행한다. 개발 작업 파일은 덮어쓰지 않는다. 로컬 `gh` 로그인과 네트워크가 필요하며, Mac 로그인 후 Docker가 준비되면 실행된다. 수동 실행: `HONGIK_REPOSITORY_ROOT="$PWD" sh deploy/production/macmini-update.sh`. 로그는 `.production-runtime/update.log`와 `update-error.log`, 백업은 `.production-runtime/backups`에 저장한다.
 
 Pages는 `master` 커밋마다 웹과 Function을 자동 배포한다. `.github/workflows/verify.yml`은 프런트 테스트·정적 빌드·비공개 파일 제외 및 합성 Django 테스트를 검증한다.
 

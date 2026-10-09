@@ -9,3 +9,5 @@
 **/.env*
 *.pdf
 tools
+deploy/production/secrets
+.production-runtime
