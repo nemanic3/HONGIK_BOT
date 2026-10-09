@@ -60,7 +60,7 @@ Pages 환경 변수:
 
 ## GitHub 자동 배포
 
-Mac mini에서는 SSH 배포 workflow를 활성화하지 않는다. 사용자 LaunchAgent `dev.nemanic.hongikbot`가 5분마다 master의 최신 커밋과 GitHub `Verify deployment` push 검사 성공을 확인한다. 성공한 커밋만 `.production-runtime/releases/<SHA>`에 Git archive로 배치한 뒤 기존 운영 볼륨을 사용하는 release 스크립트를 실행한다. 개발 작업 파일은 덮어쓰지 않는다. 로컬 `gh` 로그인과 네트워크가 필요하며, Mac 로그인 후 Docker가 준비되면 실행된다. 수동 실행: `HONGIK_REPOSITORY_ROOT="$PWD" sh deploy/production/macmini-update.sh`. 로그는 `.production-runtime/update.log`와 `update-error.log`, 백업은 `.production-runtime/backups`에 저장한다.
+Mac mini에서는 SSH 배포 workflow를 활성화하지 않는다. 사용자 LaunchAgent `dev.nemanic.hongikbot`가 5분마다 master의 최신 커밋과 GitHub `Verify deployment` push 검사 성공을 확인한다. 운영 전용 체크아웃은 `~/Library/Application Support/HongikBot/repository`이다. Desktop에서 LaunchAgent 실행은 macOS 개인정보 보호로 차단되어 운영 체크아웃을 별도로 마련했다. 성공한 커밋만 그 안의 `.production-runtime/releases/<SHA>`에 Git archive로 배치한 뒤 기존 운영 볼륨을 사용하는 release 스크립트를 실행한다. 개발 작업 파일은 덮어쓰지 않는다. 로컬 `gh` 로그인과 네트워크가 필요하며, Mac 로그인 후 Docker가 준비되면 실행된다. 수동 실행: `HONGIK_REPOSITORY_ROOT="$HOME/Library/Application Support/HongikBot/repository" sh "$HOME/Library/Application Support/HongikBot/macmini-update.sh"`. 로그는 운영 체크아웃의 `.production-runtime/update.log`와 `update-error.log`, 백업은 `.production-runtime/backups`에 저장한다. Mac의 전원 종료 및 사용자 로그아웃 시 서비스가 중단될 수 있다.
 
 Pages는 `master` 커밋마다 웹과 Function을 자동 배포한다. `.github/workflows/verify.yml`은 프런트 테스트·정적 빌드·비공개 파일 제외 및 합성 Django 테스트를 검증한다.
 

@@ -11,11 +11,15 @@
 - 격리된 PostgreSQL/Redis/Celery/PaddleOCR Docker 구성에서 합성 데이터 검증 통과: 회원가입, 로그인, JWT 갱신/로그아웃 폐기, 한국어 이미지와 PDF의 비동기 OCR, 소유자 미리보기, 타 계정 접근 차단, 확정, 졸업 보고서, 캐시 방지, 비공개 미디어, 프록시 인증.
 - PostgreSQL 마이그레이션 및 Django 운영 보안 검사 통과.
 
-## 운영 백엔드 대기
+## Mac mini 운영 백엔드
 
-서버 구매 승인 전이며 실제 운영 API는 연결하지 않았다. Pages의 `API_ORIGIN`, `HONGIK_PROXY_SECRET`은 미설정으로 API는 503으로 차단된다. 서버 준비 후 Django/DB/Redis/OCR/Tunnel과 GitHub SSH secrets를 설정하고 실제 HTTPS 흐름을 다시 검증한다. 로컬 테스트는 운영 성공을 의미하지 않는다.
+사용자가 유료 서버를 거절하고 기존 Mac mini 사용을 선택했다. 새 운영 PostgreSQL/Redis/Django/Celery를 Docker로 실행하고 전용 Cloudflare Tunnel `hongikbot-macmini`를 생성했다. `hongikbot-origin.nemanic.dev`는 `http://api:8000`에만 연결된다. 운영 Pages에 `API_ORIGIN=https://hongikbot-origin.nemanic.dev`와 암호화 `HONGIK_PROXY_SECRET`을 설정했다. 실제 사용자 도메인에서 가상 계정 회원가입과 로그인 성공을 확인했다. 실제 HTTPS 파일 업로드 검증은 Chrome 파일 접근 설정 이후 진행한다.
 
-## 서버 비용 제안 (구매하지 않음)
+Mac 전용 운영 체크아웃은 `~/Library/Application Support/HongikBot/repository`에 있다. 개발 데이터는 복사하지 않았다. LaunchAgent `dev.nemanic.hongikbot`가 5분마다 GitHub master push 검증 성공 커밋을 자동 배포한다. 첫 자동 배포 `c07113d`의 마이그레이션, 운영 보안 검사, 모델 준비, 컨테이너 정상 상태를 확인했다. SSH 배포 workflow는 비활성으로 유지한다.
+
+운영 컨테이너 내부에서도 별도의 합성 계정 두 개로 이미지/PDF 비동기 OCR, 원본 미리보기, 타 계정 접근 거부, 확정, 보고서, 토큰 갱신/폐기, private/no-store, 미디어 차단, 프록시 인증 검증을 모두 통과했다. 공개 HTTPS에서 파일 업로드 전체 흐름은 아직 별도 검증 대상이다. 명령행 HTTPS 요청은 Cloudflare 오류 1010으로 차단되며 보안 설정을 낮추지 않았다. 브라우저 회원가입/로그인은 정상이다.
+
+## 거절된 서버 비용 제안 (구매하지 않음)
 
 Hetzner CAX21 유럽: ARM64 4 vCPU, RAM 8 GB, SSD 80 GB. Linux ARM64에서 실제 OCR를 검증했으며 Django·PostgreSQL·Redis·OCR를 한 서버에 실행한다. 유럽 위치로 한국에서 API 왕복 지연이 증가할 수 있다. 재고와 세금은 생성 시 확인한다.
 
