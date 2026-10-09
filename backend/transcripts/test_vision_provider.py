@@ -16,7 +16,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 def synthetic_png():
     """Discover an installed font and label the generated non-student image."""
-    roots = [Path('/System/Library/Fonts'), Path('/Library/Fonts')]
+    roots = [Path('/System/Library/Fonts'), Path('/Library/Fonts'), Path('/usr/share/fonts')]
     candidates = [root / 'Helvetica.ttc' for root in roots]
     candidates += [path for root in roots if root.exists()
                    for path in root.rglob('*')
@@ -28,7 +28,9 @@ def synthetic_png():
         except OSError:
             continue
     else:
-        raise unittest.SkipTest('Real OCR fixture blocked: no usable installed font')
+        # Linux process-boundary tests need a valid PNG, not a macOS font.
+        # The real Vision test remains explicitly restricted to macOS below.
+        font = ImageFont.load_default(size=48)
     image = Image.new('RGB', (1400, 360), 'white')
     draw = ImageDraw.Draw(image)
     for number, line in enumerate([

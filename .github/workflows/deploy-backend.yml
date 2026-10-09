@@ -1,0 +1,41 @@
+name: Deploy backend
+on:
+  workflow_run:
+    workflows: [Verify deployment]
+    types: [completed]
+    branches: [master]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: hongikbot-backend-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: vars.HONGIK_BACKEND_ENABLED == 'true' && (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
+    runs-on: ubuntu-latest
+    environment: hongikbot-production
+    env:
+      BACKEND_HOST: ${{ secrets.HONGIK_BACKEND_HOST }}
+      BACKEND_USER: ${{ secrets.HONGIK_BACKEND_USER }}
+      BACKEND_SSH_KEY: ${{ secrets.HONGIK_BACKEND_SSH_KEY }}
+      BACKEND_KNOWN_HOSTS: ${{ secrets.HONGIK_BACKEND_KNOWN_HOSTS }}
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+      - name: Prepare verified SSH host and key
+        run: |
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$BACKEND_SSH_KEY" > ~/.ssh/hongikbot
+          printf '%s\n' "$BACKEND_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          [[ "$BACKEND_HOST" =~ ^[A-Za-z0-9.-]+$ ]]
+          [[ "$BACKEND_USER" =~ ^[A-Za-z0-9_-]+$ ]]
+          [[ "$DEPLOY_SHA" =~ ^[a-f0-9]{40}$ ]]
+      - name: Upload code only and release
+        run: |
+          git archive --format=tar HEAD | gzip > /tmp/hongikbot-release.tar.gz
+          scp -i ~/.ssh/hongikbot -o BatchMode=yes -o StrictHostKeyChecking=yes /tmp/hongikbot-release.tar.gz "$BACKEND_USER@$BACKEND_HOST:/opt/hongikbot/release.tar.gz"
+          ssh -i ~/.ssh/hongikbot -o BatchMode=yes -o StrictHostKeyChecking=yes "$BACKEND_USER@$BACKEND_HOST" "cd /opt/hongikbot && tar -xzf release.tar.gz && sh deploy/production/release.sh"

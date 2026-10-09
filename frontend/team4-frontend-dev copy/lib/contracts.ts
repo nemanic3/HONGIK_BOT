@@ -60,7 +60,7 @@ export function requireId(value: unknown): string {
   if (typeof id !== 'string' || !/^[1-9]\d*$/.test(id)) throw new Error('서버의 ID가 올바르지 않습니다.');
   return id;
 }
-export function reviewHref(id: unknown): string { return `/review/${requireId(id)}`; }
+export function reviewHref(id: unknown): string { return `/review?transcript_id=${requireId(id)}`; }
 export function uploadResult(status: number, data: unknown): { transcript_id: string; status?: string } {
   if (status !== 201 && status !== 503) throw new Error('업로드에 실패했습니다.');
   const result = data as { transcript_id?: unknown; status?: string };

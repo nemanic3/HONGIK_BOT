@@ -17,3 +17,7 @@ backend/media/
 !.env.example
 .next-service-check/
 .next-service-build/
+out/
+.wrangler/
+*.tsbuildinfo
+deploy/production/secrets/

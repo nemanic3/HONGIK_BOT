@@ -34,6 +34,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'core.middleware.PrivateAPIMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',     # ← CORS는 위쪽
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -64,7 +65,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core.wsgi.application'
 ASGI_APPLICATION = 'core.asgi.application'
 
-# DB (sqlite)
+# Local SQLite; production uses a separate, persistent PostgreSQL instance.
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -73,6 +74,19 @@ DATABASES = {
 }
 
 # Auth
+if os.environ.get('DJANGO_DB_ENGINE') == 'postgresql':
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ.get('POSTGRES_DB', 'hongikbot'),
+        'USER': os.environ.get('POSTGRES_USER', 'hongikbot'),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', ''),
+        'HOST': os.environ.get('POSTGRES_HOST', 'postgres'),
+        'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+        'CONN_MAX_AGE': 60,
+    }
+    if not DATABASES['default']['PASSWORD']:
+        raise ImproperlyConfigured('POSTGRES_PASSWORD is required for PostgreSQL')
+
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME':'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME':'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -92,6 +106,27 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = Path(os.environ.get('DJANGO_MEDIA_ROOT', str(BASE_DIR / 'media')))
+FILE_UPLOAD_PERMISSIONS = 0o600
+FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o700
+DATA_UPLOAD_MAX_MEMORY_SIZE = 6 * 1024 * 1024
+DATA_UPLOAD_MAX_NUMBER_FILES = 5
+
+# Only the authenticated Pages proxy may forward production API traffic.
+HONGIK_PROXY_SECRET = os.environ.get('HONGIK_PROXY_SECRET', '')
+DJANGO_REQUIRE_PROXY_SECRET = os.environ.get('DJANGO_REQUIRE_PROXY_SECRET', '0') == '1'
+if DJANGO_REQUIRE_PROXY_SECRET and len(HONGIK_PROXY_SECRET) < 32:
+    raise ImproperlyConfigured('HONGIK_PROXY_SECRET must contain at least 32 characters')
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https') if DJANGO_REQUIRE_PROXY_SECRET else None
+SECURE_SSL_REDIRECT = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
+# Scoped to this service hostname; sibling sites receive no changed settings.
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = not DEBUG
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+CSRF_TRUSTED_ORIGINS = [v for v in os.environ.get('DJANGO_CSRF_ORIGINS', '').split(',') if v]
 
 # DRF + JWT(auth class만 등록)
 REST_FRAMEWORK = {

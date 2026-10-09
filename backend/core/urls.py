@@ -1,7 +1,9 @@
 from django.contrib import admin
 from django.urls import path, include
+from .health import health
 
 urlpatterns = [
+    path('api/health/', health),
     path('admin/', admin.site.urls),
 
     # APIs

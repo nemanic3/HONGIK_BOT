@@ -1,6 +1,6 @@
 import type { UserProfile } from './types';
 
-export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
+export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? (process.env.NODE_ENV === 'production' ? '' : 'http://127.0.0.1:8000')).replace(/\/$/, '');
 export const AUTH_REFRESH_PATH = process.env.NEXT_PUBLIC_AUTH_REFRESH_PATH || '/api/users/refresh/';
 const SESSION_KEYS = ['accessToken', 'refreshToken', 'userId', 'user_id', 'accessExp', 'fullName', 'fullname', 'full_name', 'studentId', 'StudentId', 'currentYear', 'major', 'user', 'transcriptId', 'token', 'authToken'];
 export const SESSION_GENERATION_KEY = 'authSessionGeneration';

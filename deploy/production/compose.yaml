@@ -1,0 +1,99 @@
+name: hongikbot
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hongikbot
+      POSTGRES_USER: hongikbot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes: [database:/var/lib/postgresql/data]
+    networks: [private]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U hongikbot -d hongikbot']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: [redis-server, --appendonly, 'yes', --appendfsync, everysec]
+    volumes: [queue:/data]
+    networks: [private]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  api:
+    build:
+      context: ../..
+      dockerfile: deploy/production/Dockerfile
+      target: api
+    image: hongikbot-api:production
+    restart: unless-stopped
+    environment: &backend-env
+      DJANGO_DEBUG: '0'
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY}
+      DJANGO_ALLOWED_HOSTS: hongikbot-origin.nemanic.dev,api,localhost,127.0.0.1
+      DJANGO_CORS_ORIGINS: https://hongikbot.nemanic.dev
+      DJANGO_CSRF_ORIGINS: https://hongikbot.nemanic.dev
+      DJANGO_DB_ENGINE: postgresql
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      DJANGO_MEDIA_ROOT: /state/media
+      DJANGO_REQUIRE_PROXY_SECRET: '1'
+      HONGIK_PROXY_SECRET: ${HONGIK_PROXY_SECRET:?Set HONGIK_PROXY_SECRET}
+      TRANSCRIPT_PROCESSING: celery
+      TRANSCRIPT_IMAGE_OCR_PROVIDER: transcripts.paddle_provider.recognize_png
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    volumes: [uploads:/state]
+    networks: [private]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      # Through the same ingress authentication and HTTPS handling as real traffic.
+      test: [CMD, python, -c, "import os,urllib.request; r=urllib.request.Request('http://localhost:8000/api/health/',headers={'X-Hongik-Proxy-Secret':os.environ['HONGIK_PROXY_SECRET'],'X-Forwarded-Proto':'https'}); urllib.request.urlopen(r,timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+  worker:
+    build:
+      context: ../..
+      dockerfile: deploy/production/Dockerfile
+      target: worker
+    image: hongikbot-worker:production
+    restart: unless-stopped
+    environment: *backend-env
+    volumes: [uploads:/state, models:/home/hongik/.paddlex]
+    networks: [private]
+    depends_on:
+      api: {condition: service_healthy}
+    mem_limit: 4g
+    cpus: 2
+  warmup:
+    image: hongikbot-worker:production
+    profiles: [setup]
+    command: [python, -c, 'from transcripts.paddle_provider import model; model()']
+    volumes: [models:/home/hongik/.paddlex]
+    networks: [egress]
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: [tunnel, --no-autoupdate, run, --token-file, /run/secrets/tunnel-token]
+    secrets: [tunnel-token]
+    networks: [private, egress]
+    depends_on:
+      api: {condition: service_healthy}
+secrets:
+  tunnel-token:
+    file: ./secrets/tunnel-token
+volumes:
+  database:
+  queue:
+  uploads:
+  models:
+networks:
+  private: {internal: true}
+  egress:

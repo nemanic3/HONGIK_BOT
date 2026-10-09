@@ -43,10 +43,10 @@ test('review row editor keeps a new row credit and semester unknown until explic
   const doc = { schema_version: 1, source: { page: 2 }, courses: [] };
   const detail = { id: 42, status: 'complete', document: doc };
   const harness = hookHarness([detail, doc, JSON.stringify(doc), false, '', false, false, 0]);
-  const Page = component('app/review/[id]/page.tsx', {
+  const Page = component('app/review/ReviewClient.tsx', {
     react: harness.hooks,
-    'next/navigation': { useParams: () => ({ id: '42' }), useRouter: () => ({ push() {} }) },
-    '../../../components/Header/Header': { __esModule: true, default: () => null },
+    'next/navigation': { useSearchParams: () => ({ get: () => '42' }), useRouter: () => ({ push() {} }) },
+    '../../components/Header/Header': { __esModule: true, default: () => null },
   });
   const tree = Page();
   findElement(tree, element => element.type === 'button' && element.props.children === '빈 과목 행 추가').props.onClick();
@@ -62,18 +62,18 @@ test('review loads nullable OCR rows and exposes editable blank inputs without d
   const harness = hookHarness();
   const overrides = {
     react: harness.hooks,
-    'next/navigation': { useParams: () => ({ id: '42' }), useRouter: () => ({ push() {} }) },
-    '../../../components/Header/Header': { __esModule: true, default: () => null },
-    '../../../lib/poll': { pollTranscript: async () => detail },
+    'next/navigation': { useSearchParams: () => ({ get: () => '42' }), useRouter: () => ({ push() {} }) },
+    '../../components/Header/Header': { __esModule: true, default: () => null },
+    '../../lib/poll': { pollTranscript: async () => detail },
   };
-  const Page = component('app/review/[id]/page.tsx', overrides);
+  const Page = component('app/review/ReviewClient.tsx', overrides);
   Page();
   const cleanup = harness.effects[1]();
   await new Promise(resolve => setImmediate(resolve));
   assert.deepEqual(harness.updates.filter(({ index }) => index === 1).at(-1).next, doc);
   cleanup();
   const loaded = hookHarness([detail, doc, JSON.stringify(doc), false, '', false, false, 0]);
-  const tree = component('app/review/[id]/page.tsx', { ...overrides, react: loaded.hooks })();
+  const tree = component('app/review/ReviewClient.tsx', { ...overrides, react: loaded.hooks })();
   const credit = findElement(tree, element => element.props?.['aria-label'] === '1행 credit');
   assert.equal(credit.props.value, ''); assert.equal(credit.props.disabled, false);
   credit.props.onChange({ target: { value: '1.5' } });
@@ -169,10 +169,10 @@ test('empty unconfirmed OCR draft is visibly a parsing failure, never zero earne
   const doc = { schema_version: 1, courses: [], incomplete: true };
   const detail = { id: 42, status: 'done', document: doc, confirmed_at: null };
   const harness = hookHarness([detail, doc, JSON.stringify(doc), false, '', false, false, 0]);
-  const Page = component('app/review/[id]/page.tsx', {
+  const Page = component('app/review/ReviewClient.tsx', {
     react: harness.hooks,
-    'next/navigation': { useParams: () => ({ id: '42' }), useRouter: () => ({ push() {} }) },
-    '../../../components/Header/Header': { __esModule: true, default: () => null },
+    'next/navigation': { useSearchParams: () => ({ get: () => '42' }), useRouter: () => ({ push() {} }) },
+    '../../components/Header/Header': { __esModule: true, default: () => null },
   });
   assert.match(render(Page), /0학점을 의미하지 않습니다/);
 });
@@ -181,7 +181,7 @@ test('review shows capture provenance and separate retake decisions, and preserv
   const doc={schema_version:1,courses:[{code:'001009',name:'Synthetic',credit:3,type:'교필',grade:'A+',semester:'2030-1',retake_candidate:true,review_reasons:['성적 확인'],sources:[{file_number:1,page_number:1,bbox:[0,.2,.5,.1]}]}]};
   const detail={id:42,status:'done',document:doc,sources:[{file_number:1}]};
   const harness=hookHarness([detail,doc,JSON.stringify(doc),false,'',false,false,0]);
-  const Page=component('app/review/[id]/page.tsx',{react:harness.hooks,'next/navigation':{useParams:()=>({id:'42'}),useRouter:()=>({push(){}})},'../../../components/Header/Header':{__esModule:true,default:()=>null}});
+  const Page=component('app/review/ReviewClient.tsx',{react:harness.hooks,'next/navigation':{useSearchParams:()=>({get:()=> '42'}),useRouter:()=>({push(){}})},'../../components/Header/Header':{__esModule:true,default:()=>null}});
   const tree=Page();
   const select=findElement(tree,e=>e.props?.['aria-label']==='1행 학점 인정');
   select.props.onChange({target:{value:'exclude'}});
@@ -197,10 +197,10 @@ test('review shows course history uncertainty alongside original fields and sour
     identification: { status: 'needs_review', issues: ['과목명 불일치'], candidates: [{ name: 'Catalog name', evidence: { pdf_page: 98 } }] } }] };
   const detail = { id: 42, status: 'done', document: doc };
   const harness = hookHarness([detail, doc, JSON.stringify(doc), false, '', false, false, 0]);
-  const Page = component('app/review/[id]/page.tsx', {
+  const Page = component('app/review/ReviewClient.tsx', {
     react: harness.hooks,
-    'next/navigation': { useParams: () => ({ id: '42' }), useRouter: () => ({ push() {} }) },
-    '../../../components/Header/Header': { __esModule: true, default: () => null },
+    'next/navigation': { useSearchParams: () => ({ get: () => '42' }), useRouter: () => ({ push() {} }) },
+    '../../components/Header/Header': { __esModule: true, default: () => null },
   });
   const html = render(Page);
   assert.match(html, /과목명 불일치/);

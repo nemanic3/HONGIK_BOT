@@ -43,7 +43,7 @@ test('incomplete OCR draft null credit and semester can be parsed and corrected 
 
 test('upload result routes only to the server transcript ID, including OCR 503 recovery', async () => {
   const { reviewHref, uploadResult } = await contracts();
-  assert.equal(reviewHref(uploadResult(201, { transcript_id: 42, status: 'processing' }).transcript_id), '/review/42');
+  assert.equal(reviewHref(uploadResult(201, { transcript_id: 42, status: 'processing' }).transcript_id), '/review?transcript_id=42');
   assert.equal(uploadResult(503, { transcript_id: 43, status: 'error' }).transcript_id, '43');
   assert.throws(() => uploadResult(201, { status: 'processing' }), /ID/);
   assert.throws(() => uploadResult(400, { transcript_id: 42 }), /업로드/);

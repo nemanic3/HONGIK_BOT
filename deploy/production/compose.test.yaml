@@ -1,0 +1,9 @@
+# Isolated synthetic-data verification only; never use the production project name.
+services:
+  api:
+    ports: ['127.0.0.1:18082:8000']
+  tunnel:
+    profiles: [production]
+secrets:
+  tunnel-token:
+    file: /dev/null

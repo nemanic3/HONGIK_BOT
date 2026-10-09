@@ -1,19 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Header from "../../../components/Header/Header";
-import { api, ApiError, errorMessage } from "../../../lib/api";
-import { editCourse, parseDocument, requireId } from "../../../lib/contracts";
-import { confirmTranscript, getDetail } from "../../../lib/flows";
-import { pollTranscript } from "../../../lib/poll";
-import type { CourseDocument, TranscriptDetail } from "../../../lib/types";
-import styles from "../../upload/Upload.module.css";
+import { useSearchParams, useRouter } from "next/navigation";
+import Header from "../../components/Header/Header";
+import { api, ApiError, errorMessage } from "../../lib/api";
+import { editCourse, parseDocument, requireId, reviewHref } from "../../lib/contracts";
+import { confirmTranscript, getDetail } from "../../lib/flows";
+import { pollTranscript } from "../../lib/poll";
+import type { CourseDocument, TranscriptDetail } from "../../lib/types";
+import styles from "../upload/Upload.module.css";
 
 type CourseCandidate = { id?: number; code?: string; name?: string; year?: number; term?: string; credit?: number | null; type?: string; evidence?: { document?: string; pdf_page?: number; printed_page?: string; verified?: boolean } };
 
 export default function ReviewPage() {
-  const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
+  const params = { id: searchParams.get('transcript_id') ?? '' };
   const router = useRouter();
   const [detail, setDetail] = useState<TranscriptDetail | null>(null);
   const [document, setDocument] = useState<CourseDocument | null>(null);
@@ -86,7 +87,7 @@ export default function ReviewPage() {
     try {
       setSaving(true);
       const result = await api().request<{ transcript_id: number }>(`/api/transcripts/retry/${requireId(params.id)}/`, { method: "POST" });
-      router.push(`/review/${requireId(result.transcript_id)}`);
+      router.push(reviewHref(result.transcript_id));
     } catch (error) { setMessage(errorMessage(error)); }
     finally { setSaving(false); }
   }
